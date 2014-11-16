@@ -6,6 +6,7 @@ Introduction
 =====================
 * The first stage of this project has already been done with Beiling Lu and Lei Radium Yang. 
 	* A serial version implemented the basic algorithms
+	* Obj loader for 3D models
 	* New constraints for collision detection and interactivity
 	* Surface reconstruction
 
@@ -14,5 +15,7 @@ Introduction
 * In the second stage, I would like to perform the following tasks:
 	* CUDA version of PBF
 	* Accelerated algorithms in density estimation
+	* Floating objects
+	* Multi fluids
 	* Real-time surface reconstruction
 
