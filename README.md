@@ -19,3 +19,7 @@ Introduction
 	* Multi fluids
 	* Real-time surface reconstruction
 
+=====================
+Acknowledgement
+=====================
+This project is based on the paper [_Position_ _Based_ _Fluids_](http://mmacklin.com/pbf_sig_preprint.pdf) by Miles Macklin and Matthias Muller from NVidia. All the algorithms are designed by the authors if no specifications. 
