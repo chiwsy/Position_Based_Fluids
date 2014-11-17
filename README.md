@@ -12,6 +12,15 @@ Introduction
 
 	[Check the demo for stage 1](http://youtu.be/UF9xwl5-nlQ)
 	
+	Some images to show our project:
+	
+	![Bunny Cup](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Suyang_Beiling_Lei/final/PNG/OBJ1.png)
+	![Bunny Drop](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Suyang_Beiling_Lei/final/PNG/RealTime3.png)
+	![Dragon Fountain](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Suyang_Beiling_Lei/final/PNG/OBJ2.png)
+	![Beer bottle](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Suyang_Beiling_Lei/final/PNG/OBJ3.png)
+	![Pour Beer](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Suyang_Beiling_Lei/final/PNG/UserInteraction1.png)
+	![Pour Beer](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Suyang_Beiling_Lei/final/PNG/UserInteraction2.png)
+	
 * In the second stage, I would like to perform the following tasks:
 	* CUDA version of PBF
 	* Accelerated algorithms in density estimation
