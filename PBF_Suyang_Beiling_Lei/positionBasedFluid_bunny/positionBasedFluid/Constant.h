@@ -26,3 +26,18 @@ const float scale = 1.0f;
 
 #define PRESSURE_K 0.1
 #define PRESSURE_N 6
+
+
+/**************************************************************************
+Selection of Obj files:
+"bunny.obj"
+"bunny_fu.obj"
+"bunny_fu_low.obj"
+
+"dragon.obj"
+
+"cylinder_container.obj"
+
+"hack_cube.obj"
+"cont.obj"
+***************************************************************************/
