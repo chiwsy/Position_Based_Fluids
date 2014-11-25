@@ -11,21 +11,7 @@
 
 
 #include "smallObjLoader.h"
-
-#define PI_FLOAT				3.141592653589793f
-#define DELTA_Q				(float)(0.1*core_radius)
-
-#define SQR(x)					((x) * (x))
-#define CUBE(x)					((x) * (x) * (x))
-#define POW6(x)					(CUBE(x) * CUBE(x))
-#define POW9(x)					(POW6(x) * CUBE(x))
-
-
-#if PRESSURE == 1
-	#define DELTA_Q (float)(0.1*H)
-	#define PRESSURE_K 0.1
-	#define PRESSURE_N 6
-#endif
+#include "Macros.h"
 
 //GLOBALS
 dim3 threadsPerBlock(blockSize);

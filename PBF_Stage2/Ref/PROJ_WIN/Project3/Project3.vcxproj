@@ -113,6 +113,7 @@
     <ClInclude Include="..\..\src\cudaMat4.h" />
     <ClInclude Include="..\..\src\glslUtility.h" />
     <ClInclude Include="..\..\src\kernel.h" />
+    <ClInclude Include="..\..\src\Macros.h" />
     <ClInclude Include="..\..\src\main.h" />
     <ClInclude Include="..\..\src\smallObjLoader.h" />
     <ClInclude Include="..\..\src\utilities.h" />
