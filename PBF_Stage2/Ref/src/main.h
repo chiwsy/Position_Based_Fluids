@@ -20,6 +20,7 @@
 #include "kernel.h"
 #include "utilities.h"
 
+#include "Macros.h"
 
 #if CUDA_VERSION >= 5000
     #include <helper_cuda.h>
@@ -121,7 +122,7 @@ void bindFBO(int n);
 //-------------------------------
 
 //obj* mesh;
-vector<staticGeom> geoms;
+//vector<staticGeom> geoms;
 
 void initGeometry();
 void drawMesh();
