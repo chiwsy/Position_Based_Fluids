@@ -16,7 +16,7 @@
 
 void checkCUDAError(const char *msg, int line);
 void cudaPBFUpdateWrapper(float dt);
-void initCuda(int N);
+void initCuda(int N, staticGeom* geoms, int numg);
 void cudaUpdateVBO(float * vbodptr, int width, int height);
 void freeCuda();
 void setLockNum(int x);
