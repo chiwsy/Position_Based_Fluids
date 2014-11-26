@@ -6,9 +6,6 @@
 
 using namespace glm;
 
-#define N_FOR_VIS 9000
-#define DT 0.05
-#define VISUALIZE 1
 
 bool disable=true;
 
@@ -21,7 +18,7 @@ int main(int argc, char** argv)
 	//load geometry
 	initGeometry();
 
-	setLockNum(N_FOR_VIS/2);
+	setLockNum(ParticleCount/2);
     // Launch CUDA/GL
 
     init(argc, argv);
@@ -39,7 +36,7 @@ int main(int argc, char** argv)
 
 
 #if VISUALIZE == 1
-    initCuda(N_FOR_VIS, gs, geoms.size());
+    initCuda(ParticleCount);
 #else
     initCuda(2*128);
 #endif
@@ -161,7 +158,7 @@ void display()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planetIBO);
    
     glPointSize(4.0f); 
-    glDrawElements(GL_POINTS, N_FOR_VIS+1, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_POINTS, ParticleCount+1, GL_UNSIGNED_INT, 0);
 
     glPointSize(1.0f);
 
@@ -319,9 +316,9 @@ void initVAO(void)
 
     GLfloat *vertices  = new GLfloat[2*num_verts];
     GLfloat *texcoords = new GLfloat[2*num_verts]; 
-    GLfloat *bodies    = new GLfloat[4*(N_FOR_VIS+1)];
+    GLfloat *bodies    = new GLfloat[4*(ParticleCount+1)];
     GLuint *indices    = new GLuint[6*num_faces];
-    GLuint *bindices   = new GLuint[N_FOR_VIS+1];
+    GLuint *bindices   = new GLuint[ParticleCount+1];
 
     glm::vec4 ul(-20.0,-20.0,20.0,20.0);
     glm::vec4 lr(20.0,20.0,0.0,0.0);
@@ -352,7 +349,7 @@ void initVAO(void)
         }
     }
 
-    for(int i = 0; i < N_FOR_VIS; i++)
+    for(int i = 0; i < ParticleCount; i++)
     {
         bodies[4*i+0] = 0.0f;
         bodies[4*i+1] = 0.0f;
@@ -377,10 +374,10 @@ void initVAO(void)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6*num_faces*sizeof(GLuint), indices, GL_STATIC_DRAW);
 	
     glBindBuffer(GL_ARRAY_BUFFER, planetVBO);
-    glBufferData(GL_ARRAY_BUFFER, 4*(N_FOR_VIS)*sizeof(GLfloat), bodies, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 4*(ParticleCount)*sizeof(GLfloat), bodies, GL_DYNAMIC_DRAW);
     
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planetIBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (N_FOR_VIS)*sizeof(GLuint), bindices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (ParticleCount)*sizeof(GLuint), bindices, GL_STATIC_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
