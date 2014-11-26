@@ -574,10 +574,9 @@ void boxCollisionResponse(int N, particle* particles, float move){
  *************************************/
 
 //Initialize memory, update some globals
-void initCuda(int N, staticGeom* geoms, int numg)
+void initCuda(int N)
 {
-	numGeoms = numg;
-	printf("static geoms num: %d\n",numg);
+	
 	numParticles = N;
 	numGenerated = 0;
     dim3 fullBlocksPerGrid((int)ceil(float(N)/float(blockSize)));
@@ -604,12 +603,9 @@ void initCuda(int N, staticGeom* geoms, int numg)
 	cudaMalloc((void**)&grid, totalGridSize*sizeof(int));
 	checkCUDAErrorWithLine("grid cudamalloc failed!");
 
-	//malloc geometry
-	/*cudageoms = NULL;
-	cudaMalloc((void**)&cudageoms, numGeoms*sizeof(staticGeom));*/
-	//cudaMemcpy( cudageoms, geoms, numGeoms*sizeof(staticGeom), cudaMemcpyHostToDevice);
 
-    initializeParticles<<<fullBlocksPerGrid, blockSize>>>(N, particles,LockNum);
+	initializeParticles<<<fullBlocksPerGrid, blockSize>>>(N, particles,LockNum);
+
     checkCUDAErrorWithLine("Kernel failed!");
     cudaThreadSynchronize();
 }

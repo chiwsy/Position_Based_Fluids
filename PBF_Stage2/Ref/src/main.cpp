@@ -6,9 +6,6 @@
 
 using namespace glm;
 
-#define N_FOR_VIS 9000
-#define DT 0.05
-#define VISUALIZE 1
 
 bool disable=true;
 
@@ -18,10 +15,9 @@ bool disable=true;
 
 int main(int argc, char** argv)
 {
-	//load geometry
-	initGeometry();
 
-	setLockNum(N_FOR_VIS/2);
+	setLockNum(ParticleConts/2);
+
     // Launch CUDA/GL
 
     init(argc, argv);
@@ -38,11 +34,9 @@ int main(int argc, char** argv)
 	}
 
 
-#if VISUALIZE == 1
-    initCuda(N_FOR_VIS, gs, geoms.size());
-#else
-    initCuda(2*128);
-#endif
+
+    initCuda(ParticleConts);
+
 
     GLuint passthroughProgram;
     initShaders(program);
@@ -96,9 +90,9 @@ void runCuda()
     // execute the kernel
 	if(!disable)
 		cudaPBFUpdateWrapper(DT);
-#if VISUALIZE == 1
+
     cudaUpdateVBO(dptrvert, field_width, field_height);
-#endif
+
     // unmap buffer object
     cudaGLUnmapBufferObject(planetVBO);
     cudaGLUnmapBufferObject(pbo);
@@ -130,7 +124,7 @@ void display()
             GL_RGBA, GL_FLOAT, NULL);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);   
-#if VISUALIZE == 1
+
     // VAO, shader program, and texture already bound
 
 	glUseProgram(program[HEIGHT_FIELD]);
@@ -161,13 +155,15 @@ void display()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planetIBO);
    
     glPointSize(4.0f); 
-    glDrawElements(GL_POINTS, N_FOR_VIS+1, GL_UNSIGNED_INT, 0);
+
+    glDrawElements(GL_POINTS, ParticleConts+1, GL_UNSIGNED_INT, 0);
+
 
     glPointSize(1.0f);
 
     glDisableVertexAttribArray(positionLocation);
 
-#endif
+
     glutPostRedisplay();
     glutSwapBuffers();
 }
@@ -319,9 +315,11 @@ void initVAO(void)
 
     GLfloat *vertices  = new GLfloat[2*num_verts];
     GLfloat *texcoords = new GLfloat[2*num_verts]; 
-    GLfloat *bodies    = new GLfloat[4*(N_FOR_VIS+1)];
+
+    GLfloat *bodies    = new GLfloat[4*(ParticleConts+1)];
     GLuint *indices    = new GLuint[6*num_faces];
-    GLuint *bindices   = new GLuint[N_FOR_VIS+1];
+    GLuint *bindices   = new GLuint[ParticleConts+1];
+
 
     glm::vec4 ul(-20.0,-20.0,20.0,20.0);
     glm::vec4 lr(20.0,20.0,0.0,0.0);
@@ -352,7 +350,8 @@ void initVAO(void)
         }
     }
 
-    for(int i = 0; i < N_FOR_VIS; i++)
+
+    for(int i = 0; i < ParticleConts; i++)
     {
         bodies[4*i+0] = 0.0f;
         bodies[4*i+1] = 0.0f;
@@ -377,10 +376,12 @@ void initVAO(void)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6*num_faces*sizeof(GLuint), indices, GL_STATIC_DRAW);
 	
     glBindBuffer(GL_ARRAY_BUFFER, planetVBO);
-    glBufferData(GL_ARRAY_BUFFER, 4*(N_FOR_VIS)*sizeof(GLfloat), bodies, GL_DYNAMIC_DRAW);
+
+    glBufferData(GL_ARRAY_BUFFER, 4*(ParticleConts)*sizeof(GLfloat), bodies, GL_DYNAMIC_DRAW);
     
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planetIBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (N_FOR_VIS)*sizeof(GLuint), bindices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (ParticleConts)*sizeof(GLuint), bindices, GL_STATIC_DRAW);
+
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -427,24 +428,6 @@ void initShaders(GLuint * program)
     {
         glUniform3fv(location, 1, &cameraPosition[0]);
     }
-
-	program[2] = glslUtility::createProgram("shaders/meshVS.glsl", "shaders/meshFS.glsl", attributeLocations, 2);
-    glUseProgram(program[2]);
-    
-    if ((location = glGetUniformLocation(program[2], "u_image")) != -1)
-    {
-        glUniform1i(location, 0);
-    }
-    if ((location = glGetUniformLocation(program[2], "u_projMatrix")) != -1)
-    {
-		 
-		glm::mat4 result = projection*utilityCore::cudaMat4ToGlmMat4(geoms[0].transform);
-        glUniformMatrix4fv(location, 1, GL_FALSE, &result[0][0]);
-    }
-    if ((location = glGetUniformLocation(program[2], "u_height")) != -1)
-    {
-        glUniform1i(location, 0);
-    }
 }
 
 void updateCamera(GLuint * program)
@@ -483,23 +466,6 @@ void updateCamera(GLuint * program)
 		glUniform3fv(location, 1, &cameraPosition[0]);
 	}
 
-	//program[2] = glslUtility::createProgram("shaders/meshVS.glsl", "shaders/meshFS.glsl", attributeLocations, 2);
-	glUseProgram(program[2]);
-
-	if ((location = glGetUniformLocation(program[2], "u_image")) != -1)
-	{
-		glUniform1i(location, 0);
-	}
-	if ((location = glGetUniformLocation(program[2], "u_projMatrix")) != -1)
-	{
-
-		glm::mat4 result = projection*utilityCore::cudaMat4ToGlmMat4(geoms[0].transform);
-		glUniformMatrix4fv(location, 1, GL_FALSE, &result[0][0]);
-	}
-	if ((location = glGetUniformLocation(program[2], "u_height")) != -1)
-	{
-		glUniform1i(location, 0);
-	}
 }
 
 void checkFramebufferStatus(GLenum framebufferStatus) {
