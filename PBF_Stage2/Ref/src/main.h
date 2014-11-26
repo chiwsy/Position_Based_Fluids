@@ -90,6 +90,7 @@ int width=1280; int height=720;
 //-------------MAIN--------------
 //-------------------------------
 
+void printUsage();
 int main(int argc, char** argv);
 
 //-------------------------------
@@ -121,12 +122,6 @@ void bindFBO(int n);
 //---------- GEOM STUFF ---------
 //-------------------------------
 
-//obj* mesh;
-vector<staticGeom> geoms;
-
-void initGeometry();
-void drawMesh();
-void drawSphere();
 
 //-------------------------------
 //---------CLEANUP STUFF---------

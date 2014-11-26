@@ -18,16 +18,13 @@ dim3 threadsPerBlock(blockSize);
 
 int totalGridSize = (2 * (BOX_X + 2)) * (2 * (BOX_Y + 2)) * (BOX_Z + 2);
 int numParticles;
-
+string MeshFileName;// = "..\\..\\Models\\bunny_fu_low2.obj";
 __device__ int LockNum=1000;
 
 int numGenerated;
-const __device__ float starMass = 5e10;
 
 const float scene_scale = 1; //size of the height map in simulation space
 
-staticGeom* cudageoms;
-int numGeoms;
 particle* particles;
 int* neighbors;
 int* num_neighbors;
@@ -42,17 +39,13 @@ bool cleanupFixedPoints=false;
 
 using namespace glm;
 
-__global__ void setlocknumDevice(int x){
-	if(x==0){
-		//cleanupFixedPoints=true;
-	}
-	LockNum=x;
-}
 
 void setLockNum(int x){
 	LockNum=x;
 }
-
+void setMeshFile(string s){
+	MeshFileName = s;
+}
 void checkCUDAError(const char *msg, int line = -1)
 {
     cudaError_t err = cudaGetLastError();
@@ -582,7 +575,7 @@ void initCuda(int N)
     dim3 fullBlocksPerGrid((int)ceil(float(N)/float(blockSize)));
 
     cudaMalloc((void**)&particles, N * sizeof(particle));
-	SmallObjMesh som("D:\\workspace\\PhysiAnim\\FinalProj\\Position_Based_Fluids\\PBF_Suyang_Beiling_Lei\\positionBasedFluid_bunny\\positionBasedFluid\\bunny_fu_low2.obj");
+	SmallObjMesh som(MeshFileName);
 	LockNum=som.position.size();
 	printf("%d Vertices",LockNum);
 	particle* par=new particle[som.position.size()];

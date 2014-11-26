@@ -2,10 +2,10 @@
 #define KERNEL_H
 
 #include <stdio.h>
+#include <string>
 #include <thrust/random.h>
 #include <cuda.h>
 #include <cmath>
-#include "sceneStructs.h"
 
 #if CUDA_VERSION >= 5000
     #include <helper_math.h>
@@ -20,4 +20,5 @@ void initCuda(int N);
 void cudaUpdateVBO(float * vbodptr, int width, int height);
 void freeCuda();
 void setLockNum(int x);
+void setMeshFile(std::string s);
 #endif

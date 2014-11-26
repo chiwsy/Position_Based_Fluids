@@ -17,7 +17,18 @@ int main(int argc, char** argv)
 {
 
 	setLockNum(ParticleConts/2);
-
+	if (argc > 1){
+		for (int i = 1; i < argc; i++){
+			if (!strcmp(argv[i], "-m"))
+				setMeshFile(argv[++i]);
+			else {
+				printf("Unrecognized option: %s\n", argv[i]);
+				printf("Program down!\n");
+				printUsage();
+				return(-1);
+			}
+		}
+	}
     // Launch CUDA/GL
 
     init(argc, argv);
@@ -26,15 +37,6 @@ int main(int argc, char** argv)
     initPBO(&pbo);
     cudaGLRegisterBufferObject( planetVBO );
     
-		//pack geoms
-	staticGeom* gs = new staticGeom[geoms.size()];
-	for (int i = 0; i < geoms.size(); i++){
-		//geoms[i].translation += glm::vec3(0,0,.1);
-		gs[i] = geoms[i];
-	}
-
-
-
     initCuda(ParticleConts);
 
 
@@ -57,18 +59,11 @@ int main(int argc, char** argv)
 
     return 0;
 }
-
-void initGeometry(){
-	staticGeom geom;
-	geom.type = SPHERE;
-	geom.rotation = vec3(0,0,0);
-	geom.translation = vec3(0,0,0);
-	geom.scale = vec3(1,1,1);
-	mat4 transform = utilityCore::buildTransformationMatrix(geom.translation, geom.rotation, geom.scale);
-	geom.transform = utilityCore::glmMat4ToCudaMat4(transform);
-	geom.inverseTransform = utilityCore::glmMat4ToCudaMat4(glm::inverse(transform));
-	geoms.push_back(geom);
-	
+void printUsage(){
+	printf("This is a position based fluid simulator!\n");
+	printf("Use -m [path] option to specify your mesh object.\n");
+	printf("\'e\' key to enable/disable simulation.\n");
+	printf("\'g\' key to distroy your mesh model.\n");
 }
 
 //-------------------------------
