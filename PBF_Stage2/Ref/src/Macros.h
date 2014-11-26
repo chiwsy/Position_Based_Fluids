@@ -6,11 +6,17 @@
 #define PRESSURE 1
 #define HEAP 0
 
+<<<<<<< HEAD
 
 #define ParticleConts 9000
 #define DT 0.05
 
 
+=======
+#define ParticleCount 9000
+#define DT 0.05
+
+>>>>>>> origin/master
 #define BOX_X 20
 #define BOX_Y 20
 #define BOX_Z 100

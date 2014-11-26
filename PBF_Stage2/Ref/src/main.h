@@ -32,6 +32,7 @@
     #define compat_getMaxGflopsDeviceId() cutGetMaxGflopsDeviceId()
 #endif
 
+#include "Macros.h"
 using namespace std;
 
 //-------------------------------

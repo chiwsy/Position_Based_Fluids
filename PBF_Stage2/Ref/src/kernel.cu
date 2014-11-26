@@ -603,7 +603,11 @@ void initCuda(int N)
 	cudaMalloc((void**)&grid, totalGridSize*sizeof(int));
 	checkCUDAErrorWithLine("grid cudamalloc failed!");
 
+<<<<<<< HEAD
 	initializeParticles<<<fullBlocksPerGrid, blockSize>>>(N, particles,LockNum);
+=======
+    initializeParticles<<<fullBlocksPerGrid, blockSize>>>(N, particles,LockNum);
+>>>>>>> origin/master
     checkCUDAErrorWithLine("Kernel failed!");
     cudaThreadSynchronize();
 }

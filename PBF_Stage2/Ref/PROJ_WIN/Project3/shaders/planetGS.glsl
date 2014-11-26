@@ -24,7 +24,11 @@ void main()
 
     ToCam = normalize(u_cameraPos - Position);
     Up = vec3(0.0, 0.0, 1.0);
+<<<<<<< HEAD
     Right = normalize(cross(ToCam, Up));
+=======
+    Right = cross(ToCam, Up);
+>>>>>>> origin/master
     Up = cross(Right, ToCam);
 
     vec3 Pos = Position + scale*Right - scale*Up;
