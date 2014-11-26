@@ -18,16 +18,27 @@ int main(int argc, char** argv)
 
 	setLockNum(ParticleConts/2);
 	if (argc > 1){
+		printUsage();
 		for (int i = 1; i < argc; i++){
 			if (!strcmp(argv[i], "-m"))
 				setMeshFile(argv[++i]);
 			else {
 				printf("Unrecognized option: %s\n", argv[i]);
 				printf("Program down!\n");
-				printUsage();
+				//printUsage();
 				return(-1);
 			}
 		}
+		
+		char cCurrentPath[FILENAME_MAX];
+		if (!GetCurrentDir(cCurrentPath, sizeof(cCurrentPath)))
+		{
+			return errno;
+		}
+
+		cCurrentPath[sizeof(cCurrentPath) - 1] = '\0'; /* not really required */
+
+		printf("The current working directory is %s", cCurrentPath);
 	}
     // Launch CUDA/GL
 
@@ -396,7 +407,7 @@ void initShaders(GLuint * program)
     projection = projection * view;
 
     GLint location;
-    program[0] = glslUtility::createProgram("shaders/heightVS.glsl", "shaders/heightFS.glsl", attributeLocations, 2);
+    program[0] = glslUtility::createProgram("./shaders/heightVS.glsl", "./shaders/heightFS.glsl", attributeLocations, 2);
     glUseProgram(program[0]);
     
     if ((location = glGetUniformLocation(program[0], "u_image")) != -1)
@@ -412,7 +423,7 @@ void initShaders(GLuint * program)
         glUniform1i(location, 0);
     }
     
-    program[1] = glslUtility::createProgram("shaders/planetVS.glsl", "shaders/planetGS.glsl", "shaders/planetFS.glsl", attributeLocations, 1);
+    program[1] = glslUtility::createProgram("./shaders/planetVS.glsl", "./shaders/planetGS.glsl", "./shaders/planetFS.glsl", attributeLocations, 1);
     glUseProgram(program[1]);
     
     if ((location = glGetUniformLocation(program[1], "u_projMatrix")) != -1)
