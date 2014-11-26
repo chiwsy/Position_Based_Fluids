@@ -427,7 +427,10 @@ void initShaders(GLuint * program)
     {
         glUniform3fv(location, 1, &cameraPosition[0]);
     }
-
+	if ((location = glGetUniformLocation(program[1], "u_viewMatrix")) != -1)
+	{
+		glUniformMatrix4fv(location, 1, GL_FALSE, &view[0][0]);
+	}
 	program[2] = glslUtility::createProgram("shaders/meshVS.glsl", "shaders/meshFS.glsl", attributeLocations, 2);
     glUseProgram(program[2]);
     
@@ -450,7 +453,7 @@ void initShaders(GLuint * program)
 void updateCamera(GLuint * program)
 {
 	projection = glm::perspective(fovy, float(width) / float(height), zNear, zFar);
-	view = glm::lookAt(cameraPosition - center, glm::vec3(0), glm::vec3(0, 0, 1));
+	view = glm::lookAt(cameraPosition, center, glm::vec3(0, 0, 1));
 
 	projection = projection * view;
 
@@ -481,6 +484,10 @@ void updateCamera(GLuint * program)
 	if ((location = glGetUniformLocation(program[1], "u_cameraPos")) != -1)
 	{
 		glUniform3fv(location, 1, &cameraPosition[0]);
+	}
+	if ((location = glGetUniformLocation(program[1], "u_viewMatrix")) != -1)
+	{
+		glUniformMatrix4fv(location, 1, GL_FALSE, &view[0][0]);
 	}
 
 	//program[2] = glslUtility::createProgram("shaders/meshVS.glsl", "shaders/meshFS.glsl", attributeLocations, 2);

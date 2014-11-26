@@ -137,11 +137,6 @@ __device__ float calculateRo(particle* particles, glm::vec3 p, int* p_neighbors,
 }
 
 __device__ glm::vec3 calculateCiGradient(glm::vec3 p_i, glm::vec3 p_j){
-	//glm::vec3 Ci = -1.0f / float(REST_DENSITY) * wGradientSpikyKernel(p_i, p_j);
-	//vec3 p_j((*pit)->PredictedPos);
-				//if(Particles[i]->id>(*pit)->id) continue;
-	//Ci=pow(spikyGradient(p-p_j,core_radius).Length()/material.rest_density,2);
-	//sum_gradients+=C_i_gradient;
 	return wGradientSpikyKernel(p_i,p_j)/REST_DENSITY;
 }
 
@@ -426,9 +421,9 @@ void initializeParticles(int N, particle* particles,int LockNum=INT_MAX)
 		particle p = particles[index];
 		glm::vec3 rand = (generateRandomNumberFromThread(1.0f, index)-0.5f);
 		p.ID=index;
-		p.position.x = (index%20)-9.5f;
+		p.position.x = (index%10)-4.5f;
 		p.position.y = ((index/20)%20)-9.5f;
-		p.position.z = (index/400)+30.0f+0.05f*rand.z;
+		p.position.z = (index/200)+30.0f+0.05f*rand.z;
 		p.position.w = 1.0f;
 		//p.position=glm::vec4(index%9-3.5f,(index/9)%20-9.5f,5.0f+index/180,1.0f);
 

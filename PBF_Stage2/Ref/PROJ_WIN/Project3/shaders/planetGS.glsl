@@ -1,6 +1,7 @@
 #version 150
 
 uniform mat4 u_projMatrix;
+uniform mat4 u_viewMatrix;
 uniform vec3 u_cameraPos;
 
 layout (points) in;
@@ -22,9 +23,11 @@ void main()
     WorldCoord = Position;
 	
 
-    ToCam = normalize(u_cameraPos - Position);
-    Up = vec3(0.0, 0.0, 1.0);
-    Right = cross(ToCam, Up);
+	ToCam =normalize(u_cameraPos - Position);
+	Up = vec3(0.0, 0.0, 1.0);
+	//if (dot(ToCam,Up)>.9999)
+
+	Right = normalize(cross(Up,ToCam));
     Up = cross(Right, ToCam);
 
     vec3 Pos = Position + scale*Right - scale*Up;
