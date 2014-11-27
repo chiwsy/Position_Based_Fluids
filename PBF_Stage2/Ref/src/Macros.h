@@ -1,5 +1,8 @@
 #ifndef MACROS_H_
 #define MACROS_H_
+
+#define USE_TRANSPARENT
+
 #define blockSize 128
 #define checkCUDAErrorWithLine(msg) checkCUDAError(msg, __LINE__)
 #define SHARED 0

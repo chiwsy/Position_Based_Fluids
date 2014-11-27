@@ -60,9 +60,6 @@ GLuint planetIBO = (GLuint)NULL;
 GLuint displayImage;
 GLuint program[3];
 
-GLuint meshVBO = (GLuint)NULL;
-GLuint meshTBO = (GLuint)NULL;
-GLuint meshIBO = (GLuint)NULL;
 GLuint sphereVBO = (GLuint)NULL;
 GLuint sphereTBO = (GLuint)NULL;
 GLuint sphereIBO = (GLuint)NULL;
