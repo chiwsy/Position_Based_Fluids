@@ -84,7 +84,7 @@ glm::vec3 generateRandomNumberFromThread(float time, int index)
 //Update the vertex buffer object
 //(The VBO is where OpenGL looks for the positions for the planets)
 __global__
-void sendToVBO(int N, particle* particles, float * vbo, int width, int height, float s_scale)
+void sendToVBO(int N, particle* particles, float * vbo, int width, int height, float s_scale, unsigned int LockNum)
 {
     int index = threadIdx.x + (blockIdx.x * blockDim.x);
 
@@ -97,7 +97,7 @@ void sendToVBO(int N, particle* particles, float * vbo, int width, int height, f
         vbo[4*index+0] = particles[index].position.x*c_scale_w;
 		vbo[4*index+1] = particles[index].position.y*c_scale_h;
         vbo[4*index+2] = particles[index].position.z*c_scale_z;
-        vbo[4*index+3] = 1;
+		vbo[4 * index + 3] = (particles[index].ID >= LockNum)?1.0f:0.0f;
     }
 }
 
@@ -641,7 +641,7 @@ void cudaPBFUpdateWrapper(float dt)
 void cudaUpdateVBO(float * vbodptr, int width, int height)
 {
     dim3 fullBlocksPerGrid((int)ceil(float(numParticles)/float(blockSize)));
-    sendToVBO<<<fullBlocksPerGrid, blockSize>>>(numParticles, particles, vbodptr, width, height, scene_scale);
+    sendToVBO<<<fullBlocksPerGrid, blockSize>>>(numParticles, particles, vbodptr, width, height, scene_scale,LockNum);
     cudaThreadSynchronize();
 }
 
