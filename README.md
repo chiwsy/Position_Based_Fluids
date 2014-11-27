@@ -22,13 +22,10 @@ Introduction
 	![Pour Beer](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Suyang_Beiling_Lei/final/PNG/UserInteraction2.png)
 	
 * In the second stage, I would like to perform the following tasks:
-	* CUDA version of PBF
-	
-	![Bunny Cup New](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/Images/PBF2_20141126_01.gif)
-	
-	Causion:
+	* CUDA version of PBF  Caution:
 		* The physical system has problem so the cup is leaking!!! :(
 		* The transparency is tested for future surface reconstruction. :p
+	![Bunny Cup New](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/Images/PBF2_20141126_01.gif)
 	* Accelerated algorithms in density estimation
 	* Floating objects
 	* Multi fluids
