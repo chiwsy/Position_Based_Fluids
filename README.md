@@ -23,6 +23,7 @@ Introduction
 	
 * In the second stage, I would like to perform the following tasks:
 	* CUDA version of PBF
+	
 	![Bunny Cup New](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/Images/PBF2_20141126_01.gif)
 	
 	Causion:
