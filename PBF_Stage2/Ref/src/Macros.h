@@ -12,7 +12,7 @@
 #define HEAP 0
 
 #define GravityScale 9.8f
-#define ParticleConts 9000
+#define ParticleConts 1000
 #define DT 0.03
 
 #define BOX_X 10
