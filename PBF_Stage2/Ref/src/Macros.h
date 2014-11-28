@@ -5,11 +5,13 @@
 
 #define blockSize 128
 #define checkCUDAErrorWithLine(msg) checkCUDAError(msg, __LINE__)
+#define max(x,y) (x)>(y)?(x):(y)
+#define min(x,y) (x)<(y)?(x):(y)
 #define SHARED 0
 #define PRESSURE 1
 #define HEAP 0
 
-
+#define GravityScale 9.8f
 #define ParticleConts 9000
 #define DT 0.05
 
@@ -29,7 +31,7 @@
 
 
 #define PI_FLOAT				3.141592653589793f
-#define DELTA_Q				(float)(0.1*core_radius)
+//#define DELTA_Q				(float)(0.1*core_radius)
 
 #define SQR(x)					((x) * (x))
 #define CUBE(x)					((x) * (x) * (x))

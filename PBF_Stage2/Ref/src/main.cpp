@@ -236,6 +236,7 @@ void mouse(int button, int state, int x, int y){
 			cameraPosition = glm::vec3(eyex,eyey,eyez);
 			oldx = x;
 			oldy = y;
+			updateCamera(program, true);
 	  }else if (Rpressed){	//zoom
 			float difx = x-oldx;
 			r -= 0.1*difx;
@@ -249,9 +250,10 @@ void mouse(int button, int state, int x, int y){
 			cameraPosition = glm::vec3(eyex,eyey,eyez);
 			oldx = x;
 			oldy = y;
+			updateCamera(program,false);
 	  }
 	  //initShaders(program);
-	  updateCamera(program);
+	  
   }
 
 
@@ -403,7 +405,7 @@ void initShaders(GLuint * program)
 {
 	projection = glm::perspective(fovy, float(width)/float(height), zNear, zFar);
     view = glm::lookAt(cameraPosition-center, glm::vec3(0), glm::vec3(0,0,1));
-
+	//setGravity(GravityScale*vec3(view[2]));
     projection = projection * view;
 
     GLint location;
@@ -434,15 +436,23 @@ void initShaders(GLuint * program)
     {
         glUniform3fv(location, 1, &cameraPosition[0]);
     }
+	
 }
 
-void updateCamera(GLuint * program)
+void updateCamera(GLuint * program,bool rotate=false)
 {
 	projection = glm::perspective(fovy, float(width) / float(height), zNear, zFar);
 	view = glm::lookAt(cameraPosition - center, glm::vec3(0), glm::vec3(0, 0, 1));
-
+	
 	projection = projection * view;
-
+	if (rotate){
+		//setGravity(GravityScale*vec3(view[1]));
+		/*printf("view[4][4]=\n[%f,%f,%f,%f]\n[%f,%f,%f,%f]\n[%f,%f,%f,%f]\n[%f,%f,%f,%f]\n",
+			view[0][0], view[0][1], view[0][2], view[0][3],
+			view[1][0], view[1][1], view[1][2], view[1][3],
+			view[2][0], view[2][1], view[2][2], view[2][3],
+			view[3][0], view[3][1], view[3][2], view[3][3]);*/
+	}
 	GLint location;
 	//program[0] = glslUtility::createProgram("shaders/heightVS.glsl", "shaders/heightFS.glsl", attributeLocations, 2);
 	glUseProgram(program[0]);
@@ -471,7 +481,7 @@ void updateCamera(GLuint * program)
 	{
 		glUniform3fv(location, 1, &cameraPosition[0]);
 	}
-
+	
 }
 
 void checkFramebufferStatus(GLenum framebufferStatus) {

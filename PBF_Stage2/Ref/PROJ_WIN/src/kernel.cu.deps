@@ -796,6 +796,7 @@ D:\Program Files\NVidia\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\thrust/sy
 D:\Program Files\NVidia\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\thrust/system/cuda/detail/partition.h
 D:\Program Files\NVidia\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\thrust/system/cuda/detail/temporary_indirect_permutation.h
 D:\Program Files\NVidia\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\thrust/detail/trivial_sequence.h
+d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\utilities.h
 d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\glm/glm.hpp
 d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\glm\core/_fixes.hpp
 d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\glm\core/setup.hpp
@@ -860,9 +861,6 @@ d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\glm\./
 d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\glm\core\func_integer.inl
 d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\glm\./core/func_noise.hpp
 d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\glm\core\func_noise.inl
-d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\utilities.h
-d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\glm/glm.hpp
-d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\glm\core/_fixes.hpp
 D:\Program Files\Microsoft Visual Studio 12.0\VC\include\algorithm
 D:\Program Files\Microsoft Visual Studio 12.0\VC\include\sstream
 d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\cudaMat4.h
@@ -895,6 +893,8 @@ D:\Program Files\NVidia\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\thrust/ra
 D:\Program Files\NVidia\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\thrust/random/detail/normal_distribution_base.h
 D:\Program Files\NVidia\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\thrust/random/detail/normal_distribution.inl
 D:\Program Files\NVidia\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\math_constants.h
+d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\glm/glm.hpp
+d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\glm\core/_fixes.hpp
 D:\Program Files\NVidia\NVIDIA GPU Computing Toolkit\CUDA\v6.0\Samples\common\inc\helper_math.h
 D:\Program Files\NVidia\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\cuda_runtime.h
 d:\workspace\physianim\finalproj\position_based_fluids\pbf_stage2\ref\src\gridStruct.h

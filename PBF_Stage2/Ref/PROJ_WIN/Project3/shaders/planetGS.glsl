@@ -16,8 +16,8 @@ out vec3 Up;
 out vec3 Right;
 out vec2 TexCoord;
 
-in vec3 color[];
-out vec3 clr;
+in vec4 color[];
+out vec4 clr;
 //in vec3 color;
 
 const float scale = 3.0;

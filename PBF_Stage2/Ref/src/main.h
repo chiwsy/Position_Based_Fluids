@@ -119,7 +119,7 @@ void initCuda();
 void initTextures();
 void initVAO();
 void initShaders(GLuint * program);
-void updateCamera(GLuint* program);
+void updateCamera(GLuint* program,bool rotate);
 void initFBO(int w, int h);
 void bindFBO(int n);
 

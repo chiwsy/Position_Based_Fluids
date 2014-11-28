@@ -65,3 +65,6 @@ $RECYCLE.BIN/
 *.opensdf
 *.deps
 *.mtl
+*.exe
+*.pdb
+*.pdb
