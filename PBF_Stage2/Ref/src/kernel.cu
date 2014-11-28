@@ -412,7 +412,7 @@ __global__ void initializeParticles(int N, particle* particles,int LockNum=INT_M
 		p.ID=index;
 		p.position.x = (index%20)-9.5f;
 		p.position.y = ((index/20)%20)-9.5f;
-		p.position.z = (index/400)+30.0f+0.05f*rand.z;
+		p.position.z = (index/400)+40.0f+0.05f*rand.z;
 		p.position.w = 1.0f;
 		//p.position=glm::vec4(index%9-3.5f,(index/9)%20-9.5f,5.0f+index/180,1.0f);
 		p.pred_position = p.position;
@@ -435,7 +435,7 @@ __global__ void initializeParticles(int N, particle* particles,int LockNum=INT_M
 __global__ void setExternalForces(int N, particle* particles, int LockNum,vec3 extForce){
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
 
-	if (Conditions(index, N, LockNum)){
+	if (ParticleConditions(index,N,particles[index].ID,LockNum)){
 		particles[index].external_forces = extForce;
 	}
 }
@@ -445,7 +445,7 @@ __global__ void applyExternalForces(int N, float dt, particle* particles,int Loc
 {
     int index = threadIdx.x + (blockIdx.x * blockDim.x);
 
-	if (Conditions(index, N, LockNum)){
+	if (ParticleConditions(index,N,particles[index].ID,LockNum)){
 		particle p = particles[index];
 		//p.velocity += dt * p.external_forces;
 		//p.pred_position = p.position + dt * glm::vec4(p.velocity,0.0f);
@@ -465,7 +465,7 @@ __global__ void applyExternalForces(int N, float dt, particle* particles,int Loc
 __global__ void updatePosition(int N, particle* particles,int LockNum=0)
 {
     int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (index < N&&particles[index].ID >= LockNum){
+	if (ParticleConditions(index, N, particles[index].ID, LockNum)){
 		particles[index].position = particles[index].pred_position;
 	}
 	if(particles[index].ID<=LockNum){
@@ -478,7 +478,7 @@ __global__ void updatePosition(int N, particle* particles,int LockNum=0)
 __global__ void updatePredictedPosition(int N, particle* particles,int LockNum=0)
 {
     int index = threadIdx.x + (blockIdx.x * blockDim.x);
-    if(index < N&&particles[index].ID>=LockNum){
+	if (ParticleConditions(index, N, particles[index].ID, LockNum)){
 		particles[index].pred_position += glm::vec4(particles[index].delta_pos,0.0f);
 	}
 }
@@ -486,14 +486,14 @@ __global__ void updatePredictedPosition(int N, particle* particles,int LockNum=0
 __global__ void updateVelocity(int N, particle* particles, float dt,int LockNum)
 {
     int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (Conditions(index, N, LockNum)){
+	if (ParticleConditions(index,N,particles[index].ID,LockNum)){
 		particles[index].velocity = glm::vec3((1.0f/dt)*(particles[index].pred_position - particles[index].position));
 	}
 }
 
 __global__ void boxCollisionResponse(int N, particle* particles, float move,int LockNum){
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (Conditions(index, N, LockNum)){
+	if (ParticleConditions(index,N,particles[index].ID,LockNum)){
 		if( particles[index].pred_position.z < 0.0f){
 			particles[index].pred_position.z = 0.0001f;
 			glm::vec3 normal = glm::vec3(0,0,1);
@@ -553,7 +553,7 @@ void initCuda(int N)
 	printf("%d Vertices",LockNum);
 	particle* par=new particle[som.position.size()];
 	for(int i=0;i<LockNum;i++){
-		par[i].position=vec4(som.position[i],1.0);
+		par[i].position=vec4(som.position[i]+vec3(0.0,0.0,10.0),1.0);
 		par[i].pred_position = par[i].position;
 	}
 	if(LockNum>0){

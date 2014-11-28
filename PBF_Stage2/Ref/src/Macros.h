@@ -13,15 +13,15 @@
 
 #define GravityScale 9.8f
 #define ParticleConts 9000
-#define DT 0.05
+#define DT 0.03
 
-#define BOX_X 20
-#define BOX_Y 20
+#define BOX_X 10
+#define BOX_Y 10
 #define BOX_Z 100
 
 #define SOLVER_ITERATIONS 3
 #define MAX_NEIGHBORS 40
-#define REST_DENSITY 2000.0f
+#define REST_DENSITY 1000.0f
 #define H 2.0f // smoothing radius
 
 #define POW_H_9 (float)(H*H*H*H*H*H*H*H*H) // h^9
