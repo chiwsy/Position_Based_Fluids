@@ -13,20 +13,22 @@
 
 #define GravityScale 9.8f
 #define ParticleConts 3000
-#define DT 0.03
+#define DT 0.05
 
-#define BOX_X 10
-#define BOX_Y 10
+#define BOX_X 20
+#define BOX_Y 20
 #define BOX_Z 100
 
 #define SOLVER_ITERATIONS 3
 #define MAX_NEIGHBORS 40
-#define REST_DENSITY 800.0f
-#define H 1.8f // smoothing radius
+#define REST_DENSITY 1000.0f
+#define H 1.5f // smoothing radius
+#define collision_restitution 0.0001f
+#define K_EPSILON 0.001f
 
 #define POW_H_9 (float)(H*H*H*H*H*H*H*H*H) // h^9
 #define POW_H_6 (float)(H*H*H*H*H*H) // h^6
-#define RELAXATION .01 // relaxation term in lambda calculation
+#define RELAXATION .008 // relaxation term in lambda calculation
 
 
 

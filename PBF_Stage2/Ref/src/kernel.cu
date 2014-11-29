@@ -117,13 +117,15 @@ __global__ void sendToVBO(int N, particle* particles, float * vbo, int width, in
 
 __device__ float wPoly6Kernel(glm::vec3 p_i, glm::vec3 p_j){
 	vec3 r(p_i-p_j);
-	//if (length(r) > H) return 0.000001f;
-	return max(315.0f / (64.0f * PI_FLOAT * POW9(H)) * CUBE(SQR(H) - dot(r, r)), .000001f);
+	if (length(r) > H) return 0.000001f;
+	return 315.0f / (64.0f * PI_FLOAT * POW9(H)) * CUBE(SQR(H) - dot(r, r));
 }
 
 __device__ glm::vec3 wGradientSpikyKernel(glm::vec3 p_i, glm::vec3 p_j){
 	glm::vec3 r = p_i - p_j;
+
 	float hr_term = H - glm::length(r);
+	if (hr_term < 0.0f) return vec3(0.0f);
 	float gradient_magnitude = 45.0f / (PI * POW_H_6) * hr_term * hr_term;
 	float div = (glm::length(r) + 0.001f);
 	return gradient_magnitude * 1.0f / div * r;
@@ -135,6 +137,7 @@ __device__ float calculateRo(particle* particles, glm::vec3 p, int* p_neighbors,
 	for(int i = 0; i < p_num_neighbors; i++){
 		glm::vec3 p_j(particles[p_neighbors[i + index * MAX_NEIGHBORS]].pred_position);
 		double kv=wPoly6Kernel(p,p_j);
+		if (kv < K_EPSILON) kv = 0.0f;
 		ro+=kv;
 	}
 	return ro;
@@ -300,9 +303,9 @@ void findNeighbors(particle* particles, int* grid_idx, int* grid, int* neighbors
  * Kernels for Jacobi Solver
  *************************************/
 
-__global__ void calculateLambda(particle* particles, int* neighbors, int* num_neighbors, int N){
+__global__ void calculateLambda(particle* particles, int* neighbors, int* num_neighbors, int N,int LockNum){
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-	if(index < N){
+	if(ParticleConditions(index,N,particles[index].ID,LockNum)){
 		int k = num_neighbors[index];
 		glm::vec3 p = glm::vec3(particles[index].pred_position);
 
@@ -327,9 +330,9 @@ __global__ void calculateLambda(particle* particles, int* neighbors, int* num_ne
 	}
 }
 
-__global__ void calculateDeltaPi(particle* particles, int* neighbors, int* num_neighbors, int N){
+__global__ void calculateDeltaPi(particle* particles, int* neighbors, int* num_neighbors, int N,int LockNum){
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-	if(index < N){
+	if (ParticleConditions(index, N, particles[index].ID, LockNum)){
 		int k = num_neighbors[index];
 		glm::vec3 p = glm::vec3(particles[index].pred_position);
 		float l = particles[index].lambda;
@@ -410,9 +413,9 @@ __global__ void initializeParticles(int N, particle* particles,int LockNum=INT_M
 		particle p = particles[index];
 		glm::vec3 rand = (generateRandomNumberFromThread(1.0f, index)-0.5f);
 		p.ID=index;
-		p.position.x = (index%20)-9.5f;
-		p.position.y = ((index/20)%20)-9.5f;
-		p.position.z = (index/400)+40.0f+0.05f*rand.z;
+		p.position.x = (index%15)-9.5f;
+		p.position.y = ((index/15)%20)-9.5f;
+		p.position.z = (index/300)+60.0f+0.05f*rand.z;
 		p.position.w = 1.0f;
 		//p.position=glm::vec4(index%9-3.5f,(index/9)%20-9.5f,5.0f+index/180,1.0f);
 		p.pred_position = p.position;
@@ -447,11 +450,9 @@ __global__ void applyExternalForces(int N, float dt, particle* particles,int Loc
 
 	if (ParticleConditions(index,N,particles[index].ID,LockNum)){
 		particle p = particles[index];
-		//p.velocity += dt * p.external_forces;
-		//p.pred_position = p.position + dt * glm::vec4(p.velocity,0.0f);
 
 		p.velocity+=dt*p.external_forces;
-		//Particles[i]->PredictedPos=Particles[i]->position+dt*Particles[i]->velocity;
+		
 		p.delta_pos=glm::vec3(0.0f);
 		p.pred_position=p.position+vec4(p.velocity*dt,0.0);
 		
@@ -468,11 +469,11 @@ __global__ void updatePosition(int N, particle* particles,int LockNum=0)
 	if (ParticleConditions(index, N, particles[index].ID, LockNum)){
 		particles[index].position = particles[index].pred_position;
 	}
-	if(particles[index].ID<=LockNum){
-		particles[index].velocity=vec3(0.0f);
-		particles[index].curl=vec3(0.0f);
-		//particles[index].external_forces=vec3(0.0f);
-	}
+	//if(particles[index].ID<=LockNum){
+	//	particles[index].velocity=vec3(0.0f);
+	//	particles[index].curl=vec3(0.0f);
+	//	//particles[index].external_forces=vec3(0.0f);
+	//}
 }
 
 __global__ void updatePredictedPosition(int N, particle* particles,int LockNum=0)
@@ -491,44 +492,45 @@ __global__ void updateVelocity(int N, particle* particles, float dt,int LockNum)
 	}
 }
 
-__global__ void boxCollisionResponse(int N, particle* particles, float move,int LockNum){
+__global__ void boxCollisionResponse(int N, particle* particles, int LockNum){
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
 	if (ParticleConditions(index,N,particles[index].ID,LockNum)){
+		vec3 randv = generateRandomNumberFromThread(N, index);
 		if( particles[index].pred_position.z < 0.0f){
-			particles[index].pred_position.z = 0.0001f;
+			particles[index].pred_position.z = 0.0001f*randv.z;
 			glm::vec3 normal = glm::vec3(0,0,1);
-			glm::vec3 reflectedDir = particles[index].velocity - glm::vec3(2.0f*(normal*(glm::dot(particles[index].velocity,normal))));
-			particles[index].velocity.z = reflectedDir.z;
+			
+			particles[index].velocity.z *= -collision_restitution;
 		}
 		if( particles[index].pred_position.z > BOX_Z){
-			particles[index].pred_position.z = BOX_Z-0.0001f;
+			particles[index].pred_position.z = BOX_Z - 0.0001f*randv.z;
 			glm::vec3 normal = glm::vec3(0,0,-1);
-			glm::vec3 reflectedDir = particles[index].velocity - glm::vec3(2.0f*(normal*(glm::dot(particles[index].velocity,normal))));
-			particles[index].velocity.z = reflectedDir.z;
+			
+			particles[index].velocity.z *= -collision_restitution;
 		}
-		if( particles[index].pred_position.y < -BOX_Y+move){
-			particles[index].pred_position.y = -BOX_Y+move+0.01f;
+		if( particles[index].pred_position.y < -BOX_Y){
+			particles[index].pred_position.y = -BOX_Y + 0.0001f*randv.y;
 			glm::vec3 normal = glm::vec3(0,1,0);
-			glm::vec3 reflectedDir = particles[index].velocity - glm::vec3(2.0f*(normal*(glm::dot(particles[index].velocity,normal))));
-			particles[index].velocity.y = reflectedDir.y;
+			
+			particles[index].velocity.y *= -collision_restitution;
 		}
 		if( particles[index].pred_position.y > BOX_Y){
-			particles[index].pred_position.y = BOX_Y-0.01f;
+			particles[index].pred_position.y = BOX_Y - 0.0001f*randv.y;
 			glm::vec3 normal = glm::vec3(0,-1,0);
-			glm::vec3 reflectedDir = particles[index].velocity - glm::vec3(2.0f*(normal*(glm::dot(particles[index].velocity,normal))));
-			particles[index].velocity.y = reflectedDir.y;
+			
+			particles[index].velocity.y *= -collision_restitution;
 		}
 		if( particles[index].pred_position.x < -BOX_X){
-			particles[index].pred_position.x = -BOX_X+0.01f;
+			particles[index].pred_position.x = -BOX_X + 0.0001f*randv.x;
 			glm::vec3 normal = glm::vec3(1,0,0);
-			glm::vec3 reflectedDir = particles[index].velocity - glm::vec3(2.0f*(normal*(glm::dot(particles[index].velocity,normal))));
-			particles[index].velocity.x = reflectedDir.x;
+			
+			particles[index].velocity.x *= -collision_restitution;
 		}
 		if( particles[index].pred_position.x > BOX_X){
-			particles[index].pred_position.x = BOX_X-0.01f;
+			particles[index].pred_position.x = BOX_X - 0.0001f*randv.x;
 			glm::vec3 normal = glm::vec3(-1,0,0);
-			glm::vec3 reflectedDir = particles[index].velocity - glm::vec3(2.0f*(normal*(glm::dot(particles[index].velocity,normal))));
-			particles[index].velocity.x = reflectedDir.x;
+			
+			particles[index].velocity.x *= -collision_restitution;
 		}
 	}
 }
@@ -600,17 +602,17 @@ void cudaPBFUpdateWrapper(float dt)
 
 
 	for(int i = 0; i < SOLVER_ITERATIONS; i++){
-		calculateLambda<<<fullBlocksPerGrid, blockSize>>>(particles, neighbors, num_neighbors, numParticles);
-		calculateDeltaPi<<<fullBlocksPerGrid, blockSize>>>(particles, neighbors, num_neighbors, numParticles);
+		calculateLambda<<<fullBlocksPerGrid, blockSize>>>(particles, neighbors, num_neighbors, numParticles,innerLockNum);
+		calculateDeltaPi<<<fullBlocksPerGrid, blockSize>>>(particles, neighbors, num_neighbors, numParticles,innerLockNum);
 		//PEFORM COLLISION DETECTION AND RESPONSE
-		boxCollisionResponse << <fullBlocksPerGrid, blockSize >> >(numParticles, particles, wallMove, innerLockNum);
+		boxCollisionResponse << <fullBlocksPerGrid, blockSize >> >(numParticles, particles, innerLockNum);
 		
 		updatePredictedPosition<<<fullBlocksPerGrid, blockSize>>>(numParticles, particles,innerLockNum);
 	}
 	
 	updateVelocity << <fullBlocksPerGrid, blockSize >> >(numParticles, particles, dt, innerLockNum);
-	calculateCurl << <fullBlocksPerGrid, blockSize >> >(particles, neighbors, num_neighbors, numParticles, innerLockNum);
-	applyVorticity << <fullBlocksPerGrid, blockSize >> >(particles, neighbors, num_neighbors, numParticles, innerLockNum);
+	//calculateCurl << <fullBlocksPerGrid, blockSize >> >(particles, neighbors, num_neighbors, numParticles, innerLockNum);
+	//applyVorticity << <fullBlocksPerGrid, blockSize >> >(particles, neighbors, num_neighbors, numParticles, innerLockNum);
 	updatePosition<<<fullBlocksPerGrid, blockSize>>>(numParticles, particles,innerLockNum);
     checkCUDAErrorWithLine("updatePosition failed!");
     cudaThreadSynchronize();
