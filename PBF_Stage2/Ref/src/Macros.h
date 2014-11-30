@@ -3,7 +3,7 @@
 
 #define USE_TRANSPARENT
 
-#define blockSize 128
+#define blockSize 512
 #define checkCUDAErrorWithLine(msg) checkCUDAError(msg, __LINE__)
 #define max(x,y) (x)>(y)?(x):(y)
 #define min(x,y) (x)<(y)?(x):(y)
@@ -12,17 +12,17 @@
 #define HEAP 0
 
 #define GravityScale 9.8f
-#define ParticleConts 3000
-#define DT 0.05
+#define ParticleConts 20000
+#define DT 0.03
 
 #define BOX_X 20
 #define BOX_Y 20
 #define BOX_Z 100
 
 #define SOLVER_ITERATIONS 3
-#define MAX_NEIGHBORS 40
-#define REST_DENSITY 1000.0f
-#define H 1.5f // smoothing radius
+#define MAX_NEIGHBORS 30
+#define REST_DENSITY 800.0f
+#define H 2.0f // smoothing radius
 #define collision_restitution 0.0001f
 #define K_EPSILON 0.001f
 

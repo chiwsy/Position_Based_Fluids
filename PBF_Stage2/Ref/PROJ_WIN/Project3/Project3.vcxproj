@@ -112,6 +112,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\src\cudaMat4.h" />
     <ClInclude Include="..\..\src\glslUtility.h" />
+    <ClInclude Include="..\..\src\gridStruct.h" />
     <ClInclude Include="..\..\src\kernel.h" />
     <ClInclude Include="..\..\src\Macros.h" />
     <ClInclude Include="..\..\src\main.h" />

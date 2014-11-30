@@ -1,8 +1,11 @@
 #ifndef GRIDSTRUCT_H
 #define GRIDSTRUCT_H
+//#include<vector>
 
 struct particle{
 	unsigned int ID;
+	float inv_mass;
+	float invRestDensity;
 	glm::vec4 position;
 	glm::vec4 pred_position;
 	glm::vec3 velocity;
@@ -11,5 +14,7 @@ struct particle{
 	glm::vec3 external_forces;
 	glm::vec3 curl;
 };
+
+
 
 #endif GRIDSTRUCT_H

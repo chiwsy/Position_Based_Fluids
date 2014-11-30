@@ -4,6 +4,7 @@
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 #include <thrust/sort.h>
+//#include <thrust\device_vector.h>
 #include "utilities.h"
 #include "kernel.h"
 #include "gridStruct.h"
@@ -29,6 +30,7 @@ int* neighbors;
 int* num_neighbors;
 int* grid_idx;
 int* grid;
+
 
 bool hitonce = false;
 
@@ -164,6 +166,33 @@ __device__ glm::vec3 calculateCiGradientAti(particle* particles, glm::vec3 p_i, 
 /*************************************
  * Finding Neighboring Particles 
  *************************************/
+
+struct GridElement{
+	thrust::device_vector<particle> particles;
+};
+
+__device__ GridElement *grid_elements;
+__device__ GridElement *sleeping_grid_elements;
+__device__ const int grid_width = 2 * BOX_X / H + 1;
+__device__ const int grid_depth = 2 * BOX_Y / H + 1;
+__device__ const int grid_height = BOX_Z / H + 1;
+__device__ int grid_index(int i, int j, int k){
+	return grid_width*(k*grid_height+j)+i;
+}
+__device__ GridElement & gridContains(int i, int j, int k){
+	return grid_elements[grid_index(i, j, k)];
+}
+
+__device__ void add2grid(GridElement *target_grid, particle p){
+	int i = (int)((p.pred_position[0] + BOX_X) / H);
+	i = clamp(i, 0, grid_width - 1);
+	int j = (int)((p.pred_position[1] + BOX_Y) / H);
+	j = clamp(j, 0, grid_depth - 1);
+	int k = (int)((p.pred_position[2]) / H);
+	k = clamp(k, 0, grid_height - 1);
+	target_grid[grid_index(i, j, k)].particles.push_back(p);
+}
+
 // Clears grid from previous neighbors
 __global__ void clearGrid(int* grid, int totalGridSize){
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
@@ -198,9 +227,9 @@ __global__ void matchParticleToCell(int* gridIdx, int* grid, int N, int totalGri
 }
 
 // Finds the nearest K neighbors within the smoothing kernel radius
-__global__ void findKNearestNeighbors(particle* particles, int* gridIdx, int* grid, int* neighbors, int* num_neighbors, int N, int totalGridSize){
+__global__ void findKNearestNeighbors(particle* particles, int* gridIdx, int* grid, int* neighbors, int* num_neighbors, int N, int totalGridSize,int LockNum){
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if(index < N){
+	if (ParticleConditions(index, N, particles[index].ID, LockNum)){
 		int heap_size = 0;
 		int x,y,z,idx;
 		float r;
@@ -269,7 +298,7 @@ __global__ void findKNearestNeighbors(particle* particles, int* gridIdx, int* gr
 }
 
 // Wrapper to find neighbors using hash grid
-void findNeighbors(particle* particles, int* grid_idx, int* grid, int* neighbors, int N){
+void findNeighbors(particle* particles, int* grid_idx, int* grid, int* neighbors, int N,int LockNum){
 	dim3 fullBlocksPerGrid((int)ceil(float(totalGridSize) / float(blockSize)));
 	dim3 fullBlocksPerGridParticles((int)ceil(float(N)/float(blockSize)));
 
@@ -294,7 +323,7 @@ void findNeighbors(particle* particles, int* grid_idx, int* grid, int* neighbors
 	checkCUDAErrorWithLine("matchParticletoCell failed!");
 
 	// Find K nearest neighbors
-	findKNearestNeighbors<<<fullBlocksPerGridParticles, blockSize>>>(particles, grid_idx, grid, neighbors, num_neighbors, N, totalGridSize);
+	findKNearestNeighbors<<<fullBlocksPerGridParticles, blockSize>>>(particles, grid_idx, grid, neighbors, num_neighbors, N, totalGridSize,LockNum);
 	checkCUDAErrorWithLine("findKNearestNeighbors failed!");
 }
 
@@ -595,7 +624,7 @@ void cudaPBFUpdateWrapper(float dt)
 	}*/
 	applyExternalForces << <fullBlocksPerGrid, blockSize >> >(numParticles, dt, particles, innerLockNum);
     checkCUDAErrorWithLine("applyExternalForces failed!");
-	findNeighbors(particles, grid_idx, grid, neighbors, numParticles);
+	findNeighbors(particles, grid_idx, grid, neighbors, numParticles,innerLockNum);
 
     checkCUDAErrorWithLine("findNeighbors failed!");
 
@@ -611,8 +640,8 @@ void cudaPBFUpdateWrapper(float dt)
 	}
 	
 	updateVelocity << <fullBlocksPerGrid, blockSize >> >(numParticles, particles, dt, innerLockNum);
-	//calculateCurl << <fullBlocksPerGrid, blockSize >> >(particles, neighbors, num_neighbors, numParticles, innerLockNum);
-	//applyVorticity << <fullBlocksPerGrid, blockSize >> >(particles, neighbors, num_neighbors, numParticles, innerLockNum);
+	calculateCurl << <fullBlocksPerGrid, blockSize >> >(particles, neighbors, num_neighbors, numParticles, innerLockNum);
+	applyVorticity << <fullBlocksPerGrid, blockSize >> >(particles, neighbors, num_neighbors, numParticles, innerLockNum);
 	updatePosition<<<fullBlocksPerGrid, blockSize>>>(numParticles, particles,innerLockNum);
     checkCUDAErrorWithLine("updatePosition failed!");
     cudaThreadSynchronize();
