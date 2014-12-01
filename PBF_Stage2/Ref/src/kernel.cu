@@ -540,9 +540,9 @@ __global__ void initializeParticles(int N, particle* particles,int LockNum=INT_M
 		glm::vec3 rand = (generateRandomNumberFromThread(1.0f, index)-0.5f);
 		p.ID=index;
 		p.frozen = 0;
-		p.position.x = (index%15)-9.5f;
-		p.position.y = ((index/15)%20)-9.5f;
-		p.position.z = (index/300)+60.0f+0.05f*rand.z;
+		p.position.x = (index%20)-9.5f;
+		p.position.y = ((index/20)%20)-9.5f;
+		p.position.z = (index/400)+60.0f+0.05f*rand.z;
 		p.position.w = 1.0f;
 		//p.position=glm::vec4(index%9-3.5f,(index/9)%20-9.5f,5.0f+index/180,1.0f);
 		p.pred_position = p.position;
@@ -596,6 +596,9 @@ __global__ void updatePosition(int N, particle* particles,int LockNum=0)
     int index = threadIdx.x + (blockIdx.x * blockDim.x);
 	if (ParticleConditions(index, N, particles, LockNum)){
 		particles[index].position = particles[index].pred_position;
+		
+	}
+	if (index < N){
 		particles[index].frozen = 0;
 	}
 	//if(particles[index].ID<=LockNum){
@@ -618,6 +621,8 @@ __global__ void updateVelocity(int N, particle* particles, float dt,int LockNum)
     int index = threadIdx.x + (blockIdx.x * blockDim.x);
 	if (ParticleConditions(index,N,particles,LockNum)){
 		particles[index].velocity = glm::vec3((1.0f/dt)*(particles[index].pred_position - particles[index].position));
+		if (length(particles[index].velocity) > 20.0f)
+			particles[index].velocity = 20.0f*normalize(particles[index].velocity);
 	}
 }
 
@@ -626,41 +631,43 @@ __global__ void boxCollisionResponse(int N, particle* particles, int LockNum){
 	if (ParticleConditions(index,N,particles,LockNum)){
 		vec3 randv = generateRandomNumberFromThread(N, index);
 		if( particles[index].pred_position.z < 0.0f){
-			particles[index].pred_position.z = 0.1f*randv.z;
+			particles[index].pred_position.z = 0.001f*randv.z+0.1f;
 			glm::vec3 normal = glm::vec3(0,0,1);
 			
 			particles[index].velocity.z = collision_restitution*abs(particles[index].velocity.z);
 		}
 		if( particles[index].pred_position.z > BOX_Z){
-			particles[index].pred_position.z = BOX_Z - 0.1f*randv.z;
+			particles[index].pred_position.z = BOX_Z - 0.001f*randv.z-0.1f;
 			glm::vec3 normal = glm::vec3(0,0,-1);
 			
 			particles[index].velocity.z = -collision_restitution*abs(particles[index].velocity.z);
 		}
 		if( particles[index].pred_position.y < -BOX_Y){
-			particles[index].pred_position.y = -BOX_Y + 0.1f*randv.y;
+			particles[index].pred_position.y = -BOX_Y + 0.001f*randv.y+0.1f;
 			glm::vec3 normal = glm::vec3(0,1,0);
 			
 			particles[index].velocity.y = collision_restitution*abs(particles[index].velocity.y);
 		}
 		if( particles[index].pred_position.y > BOX_Y){
-			particles[index].pred_position.y = BOX_Y - 0.1f*randv.y;
+			particles[index].pred_position.y = BOX_Y - 0.001f*randv.y-0.1f;
 			glm::vec3 normal = glm::vec3(0,-1,0);
 			
 			particles[index].velocity.y = -collision_restitution*abs(particles[index].velocity.y);
 		}
 		if( particles[index].pred_position.x < -BOX_X){
-			particles[index].pred_position.x = -BOX_X + 0.1f*randv.x;
+			particles[index].pred_position.x = -BOX_X + 0.001f*randv.x+0.1f;
 			glm::vec3 normal = glm::vec3(1,0,0);
 			
 			particles[index].velocity.x = collision_restitution*abs(particles[index].velocity.x);
 		}
 		if( particles[index].pred_position.x > BOX_X){
-			particles[index].pred_position.x = BOX_X - 0.1f*randv.x;
+			particles[index].pred_position.x = BOX_X - 0.001f*randv.x-0.1f;
 			glm::vec3 normal = glm::vec3(-1,0,0);
 			
 			particles[index].velocity.x = -collision_restitution*abs(particles[index].velocity.x);
 		}
+		if (length(particles[index].position - particles[index].pred_position) < frozenDistance)
+			particles[index].frozen = 1;
 	}
 }
 

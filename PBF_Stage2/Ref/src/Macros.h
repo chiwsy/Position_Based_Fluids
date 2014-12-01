@@ -21,14 +21,14 @@
 
 #define SOLVER_ITERATIONS 3
 #define MAX_NEIGHBORS 30
-#define REST_DENSITY 1000.0f
+#define REST_DENSITY 1200.0f
 #define H 2.0f // smoothing radius
 #define collision_restitution 0.001f
 #define K_EPSILON 0.001f
-
+#define frozenDistance 0.01f
 #define POW_H_9 (float)(H*H*H*H*H*H*H*H*H) // h^9
 #define POW_H_6 (float)(H*H*H*H*H*H) // h^6
-#define RELAXATION .01 // relaxation term in lambda calculation
+#define RELAXATION .008 // relaxation term in lambda calculation
 
 
 

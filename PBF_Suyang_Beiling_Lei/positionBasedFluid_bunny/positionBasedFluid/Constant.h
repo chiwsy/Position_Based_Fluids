@@ -15,7 +15,7 @@ enum ModeFlag {VORTICITY,ETA,VISCOSITY,RHO,GRADIENT,GRADIENTANTI,DELTAP};
 #define HEIGHT	80
 #define DEPTH		20
 
-const int particle_count =3000  ;
+const int particle_count =8000  ;
 const float scale = 1.0f;
 
 #define CORE_RADIUS 1.8f
