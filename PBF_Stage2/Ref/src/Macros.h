@@ -20,10 +20,10 @@
 #define BOX_Z 100
 
 #define SOLVER_ITERATIONS 3
-#define MAX_NEIGHBORS 40
-#define REST_DENSITY 800.0f
+#define MAX_NEIGHBORS 30
+#define REST_DENSITY 1000.0f
 #define H 2.0f // smoothing radius
-#define collision_restitution 0.0001f
+#define collision_restitution 0.001f
 #define K_EPSILON 0.001f
 
 #define POW_H_9 (float)(H*H*H*H*H*H*H*H*H) // h^9
