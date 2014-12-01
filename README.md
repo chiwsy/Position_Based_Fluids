@@ -28,6 +28,9 @@ Introduction
 		
 	![Bunny Cup New](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/Images/PBF2_20141128.gif)
 	* Accelerated algorithms in density estimation
+		*Here is a image to show the performance of GPU version vs CPU version. Our data can be find in [performance.xls](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/performance.xls).
+		
+	![GPU vs. CPU](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/Images/Performance.png)
 	* Floating objects
 	* Multi fluids
 	* Real-time surface reconstruction
