@@ -78,13 +78,14 @@ const int field_height = 50;
 
 float fovy = 60.0f;
 float zNear = 0.01;
-float zFar = 1000.0f;
+float zFar = 500.0f;
 
 glm::mat4 projection;
 glm::mat4 view;
 glm::vec3 cameraPosition(-40.75,10,50);
 glm::vec3 center(0,0,0);
 
+int ParticleConts = 10000;
 //-------------------------------
 //----------CUDA STUFF-----------
 //-------------------------------

@@ -19,9 +19,16 @@ int main(int argc, char** argv)
 	setLockNum(ParticleConts/2);
 	if (argc > 1){
 		printUsage();
+		printf("\nParsing cmd parameters:\n");
 		for (int i = 1; i < argc; i++){
-			if (!strcmp(argv[i], "-m"))
+			if (!strcmp(argv[i], "-m")){
 				setMeshFile(argv[++i]);
+				printf("Mesh file set: %s\n",argv[i]);
+			}
+			else if (!strcmp(argv[i], "-p")){
+				ParticleConts = atoi(argv[++i]);
+				printf("Particle numbers set: %d\n", ParticleConts);
+			}
 			else {
 				printf("Unrecognized option: %s\n", argv[i]);
 				printf("Program down!\n");
@@ -29,7 +36,7 @@ int main(int argc, char** argv)
 				return(-1);
 			}
 		}
-		
+		printf("Parameter parsed successfully!\n\n");
 		char cCurrentPath[FILENAME_MAX];
 		if (!GetCurrentDir(cCurrentPath, sizeof(cCurrentPath)))
 		{

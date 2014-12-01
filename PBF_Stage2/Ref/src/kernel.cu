@@ -210,7 +210,7 @@ __device__ void add2grid(GridElement *target_grid, particle* p, int* grid_lock){
 	while (wait){
 		if (0 == atomicExch(&(grid_lock[id]), 1)){
 			int size = target_grid[id].size;
-			target_grid[grid_index(i, j, k)].particles[size++] = p;
+			if (size<MAX_NEIGHBORS) target_grid[grid_index(i, j, k)].particles[size++] = p;
 			target_grid[id].size = size;
 			grid_lock[id] = 0;
 			wait = false;
@@ -251,18 +251,20 @@ __global__ void findParticleNeighbors(GridElement* grid_elements, particle* part
 		k = clamp(k, 0, grid_height - 1);
 		int id = grid_index(i, j, k);
 		int neighborsNum = 0;
-		for (int iiter = i - 1; iiter < i + 2; iiter++){
-			if (i < 0 || i >= grid_width) continue;
-			for (int jiter = j - 1; jiter < j + 2; jiter++){
+		int offset[] = {0,-1, 1 };
+		for (int ioff = 0, iiter = i; ioff < 3; iiter = i + offset[++ioff]){
+			if (iiter < 0 || iiter >= grid_width) continue;
+			for (int joff = 0, jiter = j ; joff < 3; jiter = j + offset[++joff]){
 				if (jiter<0 || jiter>grid_depth - 1) continue;
-				for (int kiter = k - 1; kiter < k + 2; kiter++){
+				for (int koff = 0, kiter = k ; koff < 3; kiter = k + offset[++koff]){
 					if (kiter<0 || kiter>grid_height - 1) continue;
-					GridElement thisGrid = grid_elements[grid_index(iiter, jiter, kiter)];
-					for (int pi = 0; pi < thisGrid.size&&neighborsNum<MAX_NEIGHBORS; pi++){
-						particle* piter = thisGrid.particles[pi];
-						if (p.ID == piter->ID) continue;
-						if (length(p.pred_position - piter->pred_position) < H)
-							neighbors[p.ID*MAX_NEIGHBORS + neighborsNum++] = piter->ID;
+					GridElement* thisGrid = &grid_elements[grid_index(iiter, jiter, kiter)];
+					int thisGridSize = thisGrid->size;
+					for (int pi = 0; pi < thisGridSize&&neighborsNum<MAX_NEIGHBORS; pi++){
+						particle piter = *thisGrid->particles[pi];
+						if (p.ID == piter.ID) continue;
+						if (length(p.pred_position - piter.pred_position) < H)
+							neighbors[p.ID*MAX_NEIGHBORS + neighborsNum++] = piter.ID;
 					}
 				}
 			}
@@ -685,6 +687,11 @@ void initCuda(int N)
 	if(LockNum>0){
 		cudaMemcpy(particles,par,LockNum*sizeof(particle),cudaMemcpyHostToDevice);
 	}
+	if (LockNum > N){
+		printf("The mesh file need %d particles but the total particle number is set to %d!\n",LockNum,N);
+		printf("Program down!\n");
+		exit(-1);
+	}
 	//delete [] par;
 	checkCUDAErrorWithLine("particles cudamalloc failed");
 
@@ -720,7 +727,7 @@ void cudaPBFUpdateWrapper(float dt)
 		ExtForceSet = false;
 		setExternalForces << < fullBlocksPerGrid, blockSize >> >(numParticles, particles,innerLockNum,gravity);
 	}*/
-	printf("Good\n");
+	//printf("Good\n");
 	applyExternalForces << <fullBlocksPerGrid, blockSize >> >(numParticles, dt, particles, innerLockNum);
     checkCUDAErrorWithLine("applyExternalForces failed!");
 	//findNeighbors(particles, grid_idx, grid, neighbors, numParticles,innerLockNum);
