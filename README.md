@@ -35,6 +35,8 @@ Introduction
 		
 	![GPU vs. CPU](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/Images/Performance.png)
 	
+	![GPU perf vs. BlockSize](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/Images/GPUperformance.png)
+	
 	* Floating objects
 	* Multi fluids
 	* Real-time surface reconstruction
