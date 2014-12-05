@@ -45,7 +45,7 @@ int main(int argc, char** argv)
 
 		cCurrentPath[sizeof(cCurrentPath) - 1] = '\0'; /* not really required */
 
-		printf("The current working directory is %s", cCurrentPath);
+		printf("The current working directory is %s\n", cCurrentPath);
 	}
     // Launch CUDA/GL
 
@@ -60,7 +60,7 @@ int main(int argc, char** argv)
 
     GLuint passthroughProgram;
     initShaders(program);
-	initFBO(width, height);
+	//initFBO(width, height);
 
     glUseProgram(program[HEIGHT_FIELD]);
     glActiveTexture(GL_TEXTURE0);
@@ -138,6 +138,12 @@ void display()
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);   
 
+#ifdef USE_TRANSPARENT
+	glEnable(GL_DEPTH);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE,GL_ONE);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+#endif
     // VAO, shader program, and texture already bound
 
 	glUseProgram(program[HEIGHT_FIELD]);
@@ -305,6 +311,7 @@ void initPBO(GLuint* pbo)
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, *pbo);
         // Allocate data for the buffer. 4-channel 8-bit image
         glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
+
         cudaGLRegisterBufferObject( *pbo );
     }
 }

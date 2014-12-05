@@ -542,7 +542,7 @@ __global__ void initializeParticles(int N, particle* particles,int LockNum=INT_M
 		p.frozen = 0;
 		p.position.x = (index%20)-9.5f;
 		p.position.y = ((index/20)%20)-9.5f;
-		p.position.z = (index/400)+60.0f+0.05f*rand.z;
+		p.position.z = (index/400)+70.0f+0.05f*rand.z;
 		p.position.w = 1.0f;
 		//p.position=glm::vec4(index%9-3.5f,(index/9)%20-9.5f,5.0f+index/180,1.0f);
 		p.pred_position = p.position;
@@ -688,7 +688,7 @@ void initCuda(int N)
     cudaMalloc((void**)&particles, N * sizeof(particle));
 	SmallObjMesh som(MeshFileName);
 	LockNum=som.position.size();
-	printf("%d Vertices",LockNum);
+	printf("%d Vertices\n",LockNum);
 	particle* par=new particle[som.position.size()];
 	for(int i=0;i<LockNum;i++){
 		par[i].position=vec4(som.position[i]+vec3(0.0,0.0,10.0),1.0);
