@@ -3,7 +3,7 @@
 
 #define USE_TRANSPARENT
 
-#define blockSize 512
+#define blockSize 128
 #define checkCUDAErrorWithLine(msg) checkCUDAError(msg, __LINE__)
 #define max(x,y) (x)>(y)?(x):(y)
 #define min(x,y) (x)<(y)?(x):(y)
@@ -21,16 +21,23 @@
 
 #define SOLVER_ITERATIONS 3
 #define MAX_NEIGHBORS 30
-#define REST_DENSITY 1200.0f
+#define REST_DENSITY 1000.0f
 #define H 2.0f // smoothing radius
 #define collision_restitution 0.001f
 #define K_EPSILON 0.001f
 #define frozenDistance 0.01f
 #define POW_H_9 (float)(H*H*H*H*H*H*H*H*H) // h^9
 #define POW_H_6 (float)(H*H*H*H*H*H) // h^6
-#define RELAXATION .008 // relaxation term in lambda calculation
+#define RELAXATION .01 // relaxation term in lambda calculation
 
+#define JACOBI_ITERATIONS 10
 
+//Layer mask
+
+#define FLUID			(0x1)
+#define CONTAINER		(0x2)
+#define RIGID_BODY		(0x4)
+#define FROZEN			(1<<31)
 
 #define PI_FLOAT				3.141592653589793f
 //#define DELTA_Q				(float)(0.1*core_radius)

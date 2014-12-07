@@ -138,12 +138,7 @@ void display()
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);   
 
-#ifdef USE_TRANSPARENT
-	glEnable(GL_DEPTH);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_ONE,GL_ONE);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-#endif
+
     // VAO, shader program, and texture already bound
 
 	glUseProgram(program[HEIGHT_FIELD]);
@@ -284,6 +279,7 @@ void init(int argc, char* argv[])
 
     // Init GLEW
     glewInit();
+
     GLenum err = glewInit();
     if (GLEW_OK != err)
     {
@@ -291,7 +287,12 @@ void init(int argc, char* argv[])
         std::cout << "glewInit failed, aborting." << std::endl;
         exit (1);
     }
-
+#ifdef USE_TRANSPARENT
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	//glBlendFunc(GL_ONE,GL_ONE);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+#endif
     initVAO();
     initTextures();
 }

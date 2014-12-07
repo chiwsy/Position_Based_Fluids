@@ -3,7 +3,7 @@
 //#include<vector>
 
 struct particle{
-	int frozen;
+	int LayerMask;
 	unsigned int ID;
 	float inv_mass;
 	float invRestDensity;

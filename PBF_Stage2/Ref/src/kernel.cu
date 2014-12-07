@@ -71,7 +71,8 @@ __device__ bool Conditions(int index, int N, int LockNum){
 }
 
 __device__ bool ParticleConditions(int index, int N, particle* p, int LockNum){
-	return index < N&&p[index].ID >= LockNum&&!p[index].frozen;
+	return index < N && (p[index].LayerMask&FLUID);// &&!(p[index].LayerMask&FROZEN);
+	//return index<N && (p[index].ID>LockNum);
 }
 
 __host__ __device__ unsigned int devhash(unsigned int a){
@@ -287,142 +288,142 @@ void findParticleNeighborsWrapper(particle* particles, int* neighbors, int* num_
 	findParticleNeighbors << <fullBlocksPerGridParticles, blockSize >> >(grid_elements, particles, neighbors, num_neighbors, N, LockNum);
 	checkCUDAErrorWithLine("findKNearestNeighbors failed!");
 }
-
-
-// Clears grid from previous neighbors
-__global__ void clearGrid(int* grid, int totalGridSize){
-	int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if(index < totalGridSize){
-		grid[index] = -1;
-	}
-}
-
-
-// Matches each particles the grid index for the cell in which the particle resides
-__global__ void findParticleGridIndex(particle* particles, int* grid_idx, int N){
-	int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if(index < N){
-		int x, y, z;
-		glm::vec4 p = particles[index].pred_position;
-		x = int(p.x) + BOX_X + 2;
-		y = int(p.y) + BOX_Y + 2;
-		z = int(p.z) + 2;
-		grid_idx[index] = x + (2 * (BOX_X + 2) * y) + (4 * (BOX_X + 2) * (BOX_Y + 2) * z);
-	}
-}
-
-// Matches the sorted index to each of the cells
-__global__ void matchParticleToCell(int* gridIdx, int* grid, int N, int totalGridSize){
-	int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if(index < N){
-		if(index == 0){
-			grid[gridIdx[index]] = index;
-		}else if(gridIdx[index] != gridIdx[index - 1]){
-			if(gridIdx[index] >= 0 && gridIdx[index] < totalGridSize) grid[gridIdx[index]] = index;
-		}
-	}
-}
-
-// Finds the nearest K neighbors within the smoothing kernel radius
-__global__ void findKNearestNeighbors(particle* particles, int* gridIdx, int* grid, int* neighbors, int* num_neighbors, int N, int totalGridSize,int LockNum){
-	int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (ParticleConditions(index, N, particles, LockNum)){
-		int heap_size = 0;
-		int x,y,z,idx;
-		float r;
-		glm::vec4 p_j, p = particles[index].pred_position;
-
-		// Find particle index
-		x = int(p.x) + BOX_X + 2;
-		y = int(p.y) + BOX_Y + 2;
-		z = int(p.z) + 2;
-
-		float max;
-		int m, max_index, begin, cell_position;
-
-		// Examine all cells within radius
-		// NOTE: checks the cube that circumscribes the spherical smoothing kernel
-		for(int i = int(-H + z); i <= int(H + z); i++){
-			for(int j = int(-H + y); j <= int(H + y); j++){
-				for(int k = int(-H + x); k <= int(H + x); k++){
-					idx = k + (2 * (BOX_X + 2) * j) + (4 * (BOX_X + 2) * (BOX_Y + 2) * i);
-
-					if(idx >= totalGridSize || idx < 0){
-						continue;
-					}
-
-					begin = grid[idx];
-
-					if(begin < 0) continue;
-
-					cell_position = begin;
-					while(cell_position < N && gridIdx[begin] == gridIdx[cell_position]){
-						if(cell_position == index){
-							++cell_position;
-							continue;
-						}
-						p_j = particles[cell_position].pred_position;
-						r = glm::length(p - p_j);
-
-						if(heap_size < MAX_NEIGHBORS){
-							if(r < H){
-								neighbors[index * MAX_NEIGHBORS + heap_size] = cell_position;
-								++heap_size;
-							}
-						}else{
-							max = glm::length(p - particles[neighbors[index * MAX_NEIGHBORS]].pred_position);
-							max_index = 0;
-							for(m = 1; m < heap_size; m++){
-								float d = glm::length(p - particles[neighbors[index * MAX_NEIGHBORS + m]].pred_position); 
-								if(d > max){
-									max = d;
-									max_index = m;
-								}
-							}
-
-							if(r < max && r < H){
-								neighbors[index * MAX_NEIGHBORS + max_index] = cell_position;
-							}
-						}
-
-						++cell_position;
-					}
-				}
-			}
-		}
-		num_neighbors[index] = heap_size;
-	}
-}
-
-// Wrapper to find neighbors using hash grid
-void findNeighbors(particle* particles, int* grid_idx, int* grid, int* neighbors, int N,int LockNum){
-	dim3 fullBlocksPerGrid((int)ceil(float(totalGridSize) / float(blockSize)));
-	dim3 fullBlocksPerGridParticles((int)ceil(float(N)/float(blockSize)));
-
-	// Clear Grid
-	clearGrid<<<fullBlocksPerGrid, blockSize>>>(grid, totalGridSize);
-	checkCUDAErrorWithLine("clearGrid failed!");
-
-	// Match particle to index
-	findParticleGridIndex<<<fullBlocksPerGridParticles, blockSize>>>(particles, grid_idx, N);
-	checkCUDAErrorWithLine("findParticleGridIndex failed!");
-
-	// Cast to device pointers
-	thrust::device_ptr<int> t_grid_idx = thrust::device_pointer_cast(grid_idx);
-	thrust::device_ptr<particle> t_particles = thrust::device_pointer_cast(particles);
-
-	// Sort by key
-	thrust::sort_by_key(t_grid_idx, t_grid_idx + N, t_particles);
-	checkCUDAErrorWithLine("thrust failed!");
-
-	// Match sorted particle index
-	matchParticleToCell<<<fullBlocksPerGridParticles, blockSize>>>(grid_idx, grid, N, totalGridSize);
-	checkCUDAErrorWithLine("matchParticletoCell failed!");
-
-	// Find K nearest neighbors
-	findKNearestNeighbors<<<fullBlocksPerGridParticles, blockSize>>>(particles, grid_idx, grid, neighbors, num_neighbors, N, totalGridSize,LockNum);
-	checkCUDAErrorWithLine("findKNearestNeighbors failed!");
-}
+//
+//
+//// Clears grid from previous neighbors
+//__global__ void clearGrid(int* grid, int totalGridSize){
+//	int index = threadIdx.x + (blockIdx.x * blockDim.x);
+//	if(index < totalGridSize){
+//		grid[index] = -1;
+//	}
+//}
+//
+//
+//// Matches each particles the grid index for the cell in which the particle resides
+//__global__ void findParticleGridIndex(particle* particles, int* grid_idx, int N){
+//	int index = threadIdx.x + (blockIdx.x * blockDim.x);
+//	if(index < N){
+//		int x, y, z;
+//		glm::vec4 p = particles[index].pred_position;
+//		x = int(p.x) + BOX_X + 2;
+//		y = int(p.y) + BOX_Y + 2;
+//		z = int(p.z) + 2;
+//		grid_idx[index] = x + (2 * (BOX_X + 2) * y) + (4 * (BOX_X + 2) * (BOX_Y + 2) * z);
+//	}
+//}
+//
+//// Matches the sorted index to each of the cells
+//__global__ void matchParticleToCell(int* gridIdx, int* grid, int N, int totalGridSize){
+//	int index = threadIdx.x + (blockIdx.x * blockDim.x);
+//	if(index < N){
+//		if(index == 0){
+//			grid[gridIdx[index]] = index;
+//		}else if(gridIdx[index] != gridIdx[index - 1]){
+//			if(gridIdx[index] >= 0 && gridIdx[index] < totalGridSize) grid[gridIdx[index]] = index;
+//		}
+//	}
+//}
+//
+//// Finds the nearest K neighbors within the smoothing kernel radius
+//__global__ void findKNearestNeighbors(particle* particles, int* gridIdx, int* grid, int* neighbors, int* num_neighbors, int N, int totalGridSize,int LockNum){
+//	int index = threadIdx.x + (blockIdx.x * blockDim.x);
+//	if (ParticleConditions(index, N, particles, LockNum)){
+//		int heap_size = 0;
+//		int x,y,z,idx;
+//		float r;
+//		glm::vec4 p_j, p = particles[index].pred_position;
+//
+//		// Find particle index
+//		x = int(p.x) + BOX_X + 2;
+//		y = int(p.y) + BOX_Y + 2;
+//		z = int(p.z) + 2;
+//
+//		float max;
+//		int m, max_index, begin, cell_position;
+//
+//		// Examine all cells within radius
+//		// NOTE: checks the cube that circumscribes the spherical smoothing kernel
+//		for(int i = int(-H + z); i <= int(H + z); i++){
+//			for(int j = int(-H + y); j <= int(H + y); j++){
+//				for(int k = int(-H + x); k <= int(H + x); k++){
+//					idx = k + (2 * (BOX_X + 2) * j) + (4 * (BOX_X + 2) * (BOX_Y + 2) * i);
+//
+//					if(idx >= totalGridSize || idx < 0){
+//						continue;
+//					}
+//
+//					begin = grid[idx];
+//
+//					if(begin < 0) continue;
+//
+//					cell_position = begin;
+//					while(cell_position < N && gridIdx[begin] == gridIdx[cell_position]){
+//						if(cell_position == index){
+//							++cell_position;
+//							continue;
+//						}
+//						p_j = particles[cell_position].pred_position;
+//						r = glm::length(p - p_j);
+//
+//						if(heap_size < MAX_NEIGHBORS){
+//							if(r < H){
+//								neighbors[index * MAX_NEIGHBORS + heap_size] = cell_position;
+//								++heap_size;
+//							}
+//						}else{
+//							max = glm::length(p - particles[neighbors[index * MAX_NEIGHBORS]].pred_position);
+//							max_index = 0;
+//							for(m = 1; m < heap_size; m++){
+//								float d = glm::length(p - particles[neighbors[index * MAX_NEIGHBORS + m]].pred_position); 
+//								if(d > max){
+//									max = d;
+//									max_index = m;
+//								}
+//							}
+//
+//							if(r < max && r < H){
+//								neighbors[index * MAX_NEIGHBORS + max_index] = cell_position;
+//							}
+//						}
+//
+//						++cell_position;
+//					}
+//				}
+//			}
+//		}
+//		num_neighbors[index] = heap_size;
+//	}
+//}
+//
+//// Wrapper to find neighbors using hash grid
+//void findNeighbors(particle* particles, int* grid_idx, int* grid, int* neighbors, int N,int LockNum){
+//	dim3 fullBlocksPerGrid((int)ceil(float(totalGridSize) / float(blockSize)));
+//	dim3 fullBlocksPerGridParticles((int)ceil(float(N)/float(blockSize)));
+//
+//	// Clear Grid
+//	clearGrid<<<fullBlocksPerGrid, blockSize>>>(grid, totalGridSize);
+//	checkCUDAErrorWithLine("clearGrid failed!");
+//
+//	// Match particle to index
+//	findParticleGridIndex<<<fullBlocksPerGridParticles, blockSize>>>(particles, grid_idx, N);
+//	checkCUDAErrorWithLine("findParticleGridIndex failed!");
+//
+//	// Cast to device pointers
+//	thrust::device_ptr<int> t_grid_idx = thrust::device_pointer_cast(grid_idx);
+//	thrust::device_ptr<particle> t_particles = thrust::device_pointer_cast(particles);
+//
+//	// Sort by key
+//	thrust::sort_by_key(t_grid_idx, t_grid_idx + N, t_particles);
+//	checkCUDAErrorWithLine("thrust failed!");
+//
+//	// Match sorted particle index
+//	matchParticleToCell<<<fullBlocksPerGridParticles, blockSize>>>(grid_idx, grid, N, totalGridSize);
+//	checkCUDAErrorWithLine("matchParticletoCell failed!");
+//
+//	// Find K nearest neighbors
+//	findKNearestNeighbors<<<fullBlocksPerGridParticles, blockSize>>>(particles, grid_idx, grid, neighbors, num_neighbors, N, totalGridSize,LockNum);
+//	checkCUDAErrorWithLine("findKNearestNeighbors failed!");
+//}
 
 
 /*************************************
@@ -539,7 +540,7 @@ __global__ void initializeParticles(int N, particle* particles,int LockNum=INT_M
 		particle p = particles[index];
 		glm::vec3 rand = (generateRandomNumberFromThread(1.0f, index)-0.5f);
 		p.ID=index;
-		p.frozen = 0;
+		p.LayerMask = FLUID;
 		p.position.x = (index%20)-9.5f;
 		p.position.y = ((index/20)%20)-9.5f;
 		p.position.z = (index/400)+70.0f+0.05f*rand.z;
@@ -556,7 +557,7 @@ __global__ void initializeParticles(int N, particle* particles,int LockNum=INT_M
 	else if(index<N){
 		particle p=particles[index];
 		p.ID=index;
-		p.frozen = 0;
+		p.LayerMask = CONTAINER;
 		p.velocity=glm::vec3(0.0f);
 		p.external_forces=glm::vec3(0.0f,0.0f,gravity);
 		particles[index]=p;
@@ -595,11 +596,12 @@ __global__ void updatePosition(int N, particle* particles,int LockNum=0)
 {
     int index = threadIdx.x + (blockIdx.x * blockDim.x);
 	if (ParticleConditions(index, N, particles, LockNum)){
-		particles[index].position = particles[index].pred_position;
+		//if (length(particles[index].position - particles[index].pred_position) > frozenDistance)
+			particles[index].position = particles[index].pred_position;
 		
 	}
 	if (index < N){
-		particles[index].frozen = 0;
+		particles[index].LayerMask &= ~FROZEN;
 	}
 	//if(particles[index].ID<=LockNum){
 	//	particles[index].velocity=vec3(0.0f);
@@ -631,48 +633,192 @@ __global__ void boxCollisionResponse(int N, particle* particles, int LockNum){
 	if (ParticleConditions(index,N,particles,LockNum)){
 		vec3 randv = generateRandomNumberFromThread(N, index);
 		if( particles[index].pred_position.z < 0.0f){
-			particles[index].pred_position.z = 0.001f*randv.z+0.1f;
+			particles[index].pred_position.z = 0.001f*randv.z+0.01f;
 			glm::vec3 normal = glm::vec3(0,0,1);
 			
 			particles[index].velocity.z = collision_restitution*abs(particles[index].velocity.z);
 		}
 		if( particles[index].pred_position.z > BOX_Z){
-			particles[index].pred_position.z = BOX_Z - 0.001f*randv.z-0.1f;
+			particles[index].pred_position.z = BOX_Z - 0.001f*randv.z-0.01f;
 			glm::vec3 normal = glm::vec3(0,0,-1);
 			
 			particles[index].velocity.z = -collision_restitution*abs(particles[index].velocity.z);
 		}
 		if( particles[index].pred_position.y < -BOX_Y){
-			particles[index].pred_position.y = -BOX_Y + 0.001f*randv.y+0.1f;
+			particles[index].pred_position.y = -BOX_Y + 0.001f*randv.y+0.01f;
 			glm::vec3 normal = glm::vec3(0,1,0);
 			
 			particles[index].velocity.y = collision_restitution*abs(particles[index].velocity.y);
 		}
 		if( particles[index].pred_position.y > BOX_Y){
-			particles[index].pred_position.y = BOX_Y - 0.001f*randv.y-0.1f;
+			particles[index].pred_position.y = BOX_Y - 0.001f*randv.y-0.01f;
 			glm::vec3 normal = glm::vec3(0,-1,0);
 			
 			particles[index].velocity.y = -collision_restitution*abs(particles[index].velocity.y);
 		}
 		if( particles[index].pred_position.x < -BOX_X){
-			particles[index].pred_position.x = -BOX_X + 0.001f*randv.x+0.1f;
+			particles[index].pred_position.x = -BOX_X + 0.001f*randv.x+0.01f;
 			glm::vec3 normal = glm::vec3(1,0,0);
 			
 			particles[index].velocity.x = collision_restitution*abs(particles[index].velocity.x);
 		}
 		if( particles[index].pred_position.x > BOX_X){
-			particles[index].pred_position.x = BOX_X - 0.001f*randv.x-0.1f;
+			particles[index].pred_position.x = BOX_X - 0.001f*randv.x-0.01f;
 			glm::vec3 normal = glm::vec3(-1,0,0);
 			
 			particles[index].velocity.x = -collision_restitution*abs(particles[index].velocity.x);
 		}
-		if (length(particles[index].position - particles[index].pred_position) < frozenDistance)
-			particles[index].frozen = 1;
+		
 	}
 }
 
 
+/*************************************
+* shape matching *
+*************************************/
 
+__device__ void jacobiRotate(mat3 &A, mat3 &R, int p, int q){
+	// rotates A through phi in pq-plane to set A(p,q) = 0
+	// rotation stored in R whose columns are eigenvectors of A
+	float d = (A[p][p] - A[q][q]) / (2.0f*A[p][q]);
+	float t = 1.0f / (abs(d) + sqrt(d*d + 1.0f));
+
+	if (d < 0.0f) t = -t;
+	float c = 1.0f / sqrt(t*t + 1.0f);
+	float s = t*c;
+	A[p][p] += t*A[p][q];
+	A[q][q] -= t*A[p][q];
+	A[p][q] = A[q][p] = 0.0f;
+
+	//transform A
+	int k;
+	for (k = 0; k < 3; k++){
+		if (k != p&&k != q){
+			float Akp = c*A[k][p] + s*A[k][q];
+			float Akq = -s*A[k][p] + c*A[k][q];
+			A[k][p] = A[p][k] = Akp;
+			A[k][q] = A[q][k] = Akq;
+		}
+	}
+
+	//store rotation in R
+	for (k = 0; k < 3; k++){
+		float Rkp = c*R[k][p] + s*A[k][q];
+		float Rkq = -s*R[k][p] + c*R[k][q];
+
+		R[k][p] = Rkp;
+		R[k][q] = Rkq;
+	}
+}
+
+__device__ void eigenDecompposition(mat3 &outA, mat3& outR){
+	//only for symmetric matrices!
+	//A=RA'R^T, where A' is diagnoal and R orthonormal
+
+	//identity;
+	mat3 A(outA);
+	mat3 R = mat3(0.0f);
+	R[0][0] = R[1][1] = R[2][2] = 1.0f;
+	mat3 view = A;
+	printf("view[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+		view[0][0], view[0][1], view[0][2],
+		view[1][0], view[1][1], view[1][2],
+		view[2][0], view[2][1], view[2][2]);
+	int iter = 0;
+	while (iter < JACOBI_ITERATIONS){
+		int p, q;
+		float a, maxval;
+		maxval = -1.0f;
+		for (int i = 0; i < 2; i++){
+			for (int j = i+1; j < 3; j++){
+				a = abs(A[i][j]);
+				if (maxval<0.0f || a>maxval){
+					p = i;
+					q = j;
+					maxval = a;
+				}
+			}
+		}
+
+		//all small enough->done
+		if (maxval < 0.0f) break;
+		//rotate matrix with respect to that element
+		jacobiRotate(A, R, p, q);
+
+		iter++;
+	}
+	outA = A;
+	outR = R;
+}
+
+__global__ void polarDecomposition(/*mat3 &A, mat3 &R, mat3 &S*/){
+	//A=RS, where S is symmetric and R is orthonormal
+	//-> S=(A^T A)^(1/2)
+	mat3 A, R, S;
+	A = mat3(vec3(1.0f,-.3333f,.959f),vec3(.495f,1.0f,0.0f),vec3(.5f,-.247f,1.5f));
+
+
+	//identity;
+	R = mat3(0.0f);
+	R[0][0] = R[1][1] = R[2][2] = 1.0f;
+
+	mat3 ATA(0.0f);
+	ATA = transpose(A)*A;
+	
+	mat3 U;
+	eigenDecompposition(ATA, U);
+	mat3 view = U;
+	printf("QT[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+		view[0][0], view[0][1], view[0][2],
+		view[1][0], view[1][1], view[1][2],
+		view[2][0], view[2][1], view[2][2]);
+	float l0 = ATA[0][0];
+	ATA[0][0] = l0 = l0 <= 0.0f ? 0.0f : sqrt(l0);
+
+	float l1 = ATA[1][1];
+	ATA[1][1]=l1 = l1 <= 0.0f ? 0.0f : sqrt(l1);
+
+	float l2 = ATA[2][2];
+	ATA[2][2]=l2 = l2 <= 0.0f ? 0.0f : sqrt(l2);
+	view = ATA;
+	printf("ATA[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+		view[0][0], view[0][1], view[0][2],
+		view[1][0], view[1][1], view[1][2],
+		view[2][0], view[2][1], view[2][2]);
+	view = transpose(U)*ATA*U;
+	printf("U[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+		view[0][0], view[0][1], view[0][2],
+		view[1][0], view[1][1], view[1][2],
+		view[2][0], view[2][1], view[2][2]);
+	mat3 S1=inverse(view);
+	/*S1[0][0] = l0*U[0][0] * U[0][0] + l1*U[0][1] * U[0][1] + l2*U[0][2] * U[0][2];
+	S1[0][1] = l0*U[0][0] * U[1][0] + l1*U[0][1] * U[1][1] + l2*U[0][2] * U[1][2];
+	S1[0][2] = l0*U[0][0] * U[2][0] + l1*U[0][1] * U[2][1] + l2*U[0][2] * U[2][2];
+
+	S1[1][0] = S1[0][1];
+	S1[1][1] = l0*U[1][0] * U[1][0] + l1*U[1][1] * U[1][1] + l2*U[1][2] * U[1][2];
+	S1[1][2] = l0*U[1][0] * U[2][0] + l1*U[1][1] * U[2][1] + l2*U[1][2] * U[2][2];
+
+	S1[2][0] = S1[0][2];
+	S1[2][1] = S1[1][2];
+	S1[2][2] = l0*U[2][0] * U[2][0] + l1*U[2][1] * U[2][1] + l2*U[2][2] * U[2][2];*/
+
+
+	R = A*S1;
+	view = R;
+	printf("view[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+		view[0][0], view[0][1], view[0][2],
+		view[1][0], view[1][1], view[1][2],
+		view[2][0], view[2][1], view[2][2]);
+	S = transpose(R)*A;
+}
+
+__global__ void SetGoalPosition(particle* particles, int N, mat3 R, vec3 MassCenter0, vec3 MassCenter1){
+	int index = threadIdx.x + (blockIdx.x * blockDim.x);
+	if (index < N){
+		particles[index].position=vec4(R*(vec3(particles[index].pred_position) - MassCenter0) + MassCenter1,1.0f);
+	}
+}
 /*************************************
  * Wrappers for the __global__ calls *
  *************************************/
@@ -684,7 +830,8 @@ void initCuda(int N)
 	numParticles = N;
 	numGenerated = 0;
     dim3 fullBlocksPerGrid((int)ceil(float(N)/float(blockSize)));
-
+	//mat3 A, R, S;
+	polarDecomposition << <1, 1 >> >();
     cudaMalloc((void**)&particles, N * sizeof(particle));
 	SmallObjMesh som(MeshFileName);
 	LockNum=som.position.size();
