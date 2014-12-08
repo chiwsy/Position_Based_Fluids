@@ -8,11 +8,11 @@
 #include <cmath>
 #include "glm/glm.hpp"
 
-#if CUDA_VERSION >= 5000
-    #include <helper_math.h>
-#else
-    #include <cutil_math.h>
-#endif
+//#if CUDA_VERSION >= 5000
+//    #include <helper_math.h>
+//#else
+//    #include <cutil_math.h>
+//#endif
 
 
 void checkCUDAError(const char *msg, int line);

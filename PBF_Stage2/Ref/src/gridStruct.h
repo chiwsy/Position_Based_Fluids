@@ -16,6 +16,14 @@ struct particle{
 	glm::vec3 curl;
 };
 
+struct rigidbodyObj{
+	//particle* head;
+	int ID;
+	unsigned int start;
+	unsigned int size;
+	glm::vec4 oldMassCenter;
+	glm::vec4 newMassCenter;
+};
 
 
 #endif GRIDSTRUCT_H

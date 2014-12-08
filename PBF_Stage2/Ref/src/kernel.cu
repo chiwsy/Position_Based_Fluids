@@ -4,6 +4,14 @@
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 #include <thrust/sort.h>
+
+#include <thrust/transform.h> 
+#include <thrust/sequence.h> 
+#include <thrust/copy.h> 
+#include <thrust/fill.h> 
+#include <thrust/replace.h> 
+#include <thrust/functional.h>
+
 //#include <thrust\device_vector.h>
 #include "utilities.h"
 #include "kernel.h"
@@ -32,6 +40,7 @@ int* grid_idx;
 int* grid;
 
 
+
 bool hitonce = false;
 
 float wallMove = 0.0f;
@@ -39,9 +48,24 @@ float wallMove = 0.0f;
 bool cleanupFixedPoints=false;
 bool ExtForceSet = false;
 
+rigidbodyObj rigtest;
+vec4* rigPredictedPos;
+mat3* rigPredictedRot;
+mat3  rigRotMat;
+
 using namespace glm;
 
+struct particleMassCenter{
+	__host__ __device__ vec4 operator()(const particle& x) const{
+		return x.position;
+	}
+};
 
+struct particlePredictMassCenter{
+	__host__ __device__ vec4 operator()(const particle& x) const{
+		return x.pred_position;
+	}
+};
 void setLockNum(int x){
 	LockNum=x;
 }
@@ -70,8 +94,8 @@ __device__ bool Conditions(int index, int N, int LockNum){
 	return index < N&&index>=LockNum;
 }
 
-__device__ bool ParticleConditions(int index, int N, particle* p, int LockNum){
-	return index < N && (p[index].LayerMask&FLUID);// &&!(p[index].LayerMask&FROZEN);
+__device__ bool ParticleConditions(int index, int N, particle* p, int LockNum, int LayerMask){
+	return index < N && (p[index].LayerMask&LayerMask);// &&!(p[index].LayerMask&FROZEN);
 	//return index<N && (p[index].ID>LockNum);
 }
 
@@ -241,7 +265,7 @@ __global__ void clearHistory(GridElement* grid_elements, int totalGridSize){
 
 __global__ void findParticleNeighbors(GridElement* grid_elements, particle* particles, int* neighbors, int* num_neighbors, int N, int LockNum){
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (ParticleConditions(index, N, particles, LockNum)){
+	if (ParticleConditions(index, N, particles, LockNum,FLUID)){
 		num_neighbors[index] = 0;
 		particle p = particles[index];
 		int i = (int)(float(p.pred_position[0] + BOX_X) / H);
@@ -432,7 +456,7 @@ void findParticleNeighborsWrapper(particle* particles, int* neighbors, int* num_
 
 __global__ void calculateLambda(particle* particles, int* neighbors, int* num_neighbors, int N,int LockNum){
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-	if(ParticleConditions(index,N,particles,LockNum)){
+	if(ParticleConditions(index,N,particles,LockNum,FLUID)){
 		int k = num_neighbors[index];
 		glm::vec3 p = glm::vec3(particles[index].pred_position);
 
@@ -459,7 +483,7 @@ __global__ void calculateLambda(particle* particles, int* neighbors, int* num_ne
 
 __global__ void calculateDeltaPi(particle* particles, int* neighbors, int* num_neighbors, int N,int LockNum){
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-	if (ParticleConditions(index, N, particles, LockNum)){
+	if (ParticleConditions(index, N, particles, LockNum,FLUID)){
 		int k = num_neighbors[index];
 		glm::vec3 p = glm::vec3(particles[index].pred_position);
 		float l = particles[index].lambda;
@@ -487,7 +511,7 @@ __global__ void calculateDeltaPi(particle* particles, int* neighbors, int* num_n
 
 __global__ void calculateCurl(particle* particles, int* neighbors, int* num_neighbors, int N,int LockNum){
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-	if (ParticleConditions(index, N, particles, LockNum)){
+	if (ParticleConditions(index, N, particles, LockNum,FLUID)){
 		int k = num_neighbors[index];
 		glm::vec3 p = glm::vec3(particles[index].pred_position);
 		glm::vec3 v = particles[index].velocity;
@@ -506,7 +530,7 @@ __global__ void calculateCurl(particle* particles, int* neighbors, int* num_neig
 
 __global__ void applyVorticity(particle* particles, int* neighbors, int* num_neighbors, int N,int LockNum){
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-	if(ParticleConditions(index,N,particles,LockNum)){
+	if(ParticleConditions(index,N,particles,LockNum,FLUID)){
 		int k = num_neighbors[index];
 		glm::vec3 p = glm::vec3(particles[index].pred_position);
 		glm::vec3 w = particles[index].curl;
@@ -557,7 +581,7 @@ __global__ void initializeParticles(int N, particle* particles,int LockNum=INT_M
 	else if(index<N){
 		particle p=particles[index];
 		p.ID=index;
-		p.LayerMask = CONTAINER;
+		//p.LayerMask = CONTAINER;
 		p.velocity=glm::vec3(0.0f);
 		p.external_forces=glm::vec3(0.0f,0.0f,gravity);
 		particles[index]=p;
@@ -567,7 +591,7 @@ __global__ void initializeParticles(int N, particle* particles,int LockNum=INT_M
 __global__ void setExternalForces(int N, particle* particles, int LockNum,vec3 extForce){
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
 
-	if (ParticleConditions(index,N,particles,LockNum)){
+	if (ParticleConditions(index,N,particles,LockNum,FLUID|RIGID_BODY)){
 		particles[index].external_forces = extForce;
 	}
 }
@@ -577,7 +601,7 @@ __global__ void applyExternalForces(int N, float dt, particle* particles,int Loc
 {
     int index = threadIdx.x + (blockIdx.x * blockDim.x);
 
-	if (ParticleConditions(index,N,particles,LockNum)){
+	if (ParticleConditions(index,N,particles,LockNum,FLUID|RIGID_BODY)){
 		particle p = particles[index];
 
 		p.velocity+=dt*p.external_forces;
@@ -595,7 +619,7 @@ __global__ void applyExternalForces(int N, float dt, particle* particles,int Loc
 __global__ void updatePosition(int N, particle* particles,int LockNum=0)
 {
     int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (ParticleConditions(index, N, particles, LockNum)){
+	if (ParticleConditions(index, N, particles, LockNum,FLUID|RIGID_BODY)){
 		//if (length(particles[index].position - particles[index].pred_position) > frozenDistance)
 			particles[index].position = particles[index].pred_position;
 		
@@ -613,7 +637,7 @@ __global__ void updatePosition(int N, particle* particles,int LockNum=0)
 __global__ void updatePredictedPosition(int N, particle* particles,int LockNum=0)
 {
     int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (ParticleConditions(index, N, particles, LockNum)){
+	if (ParticleConditions(index, N, particles, LockNum,FLUID|RIGID_BODY)){
 		particles[index].pred_position += glm::vec4(particles[index].delta_pos,0.0f);
 	}
 }
@@ -621,7 +645,7 @@ __global__ void updatePredictedPosition(int N, particle* particles,int LockNum=0
 __global__ void updateVelocity(int N, particle* particles, float dt,int LockNum)
 {
     int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (ParticleConditions(index,N,particles,LockNum)){
+	if (ParticleConditions(index,N,particles,LockNum,FLUID|RIGID_BODY)){
 		particles[index].velocity = glm::vec3((1.0f/dt)*(particles[index].pred_position - particles[index].position));
 		if (length(particles[index].velocity) > 20.0f)
 			particles[index].velocity = 20.0f*normalize(particles[index].velocity);
@@ -630,7 +654,7 @@ __global__ void updateVelocity(int N, particle* particles, float dt,int LockNum)
 
 __global__ void boxCollisionResponse(int N, particle* particles, int LockNum){
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (ParticleConditions(index,N,particles,LockNum)){
+	if (ParticleConditions(index,N,particles,LockNum,FLUID|RIGID_BODY)){
 		vec3 randv = generateRandomNumberFromThread(N, index);
 		if( particles[index].pred_position.z < 0.0f){
 			particles[index].pred_position.z = 0.001f*randv.z+0.01f;
@@ -677,7 +701,7 @@ __global__ void boxCollisionResponse(int N, particle* particles, int LockNum){
 * shape matching *
 *************************************/
 
-__device__ void jacobiRotate(mat3 &A, mat3 &R, int p, int q){
+void jacobiRotate(mat3 &A, mat3 &R, int p, int q){
 	// rotates A through phi in pq-plane to set A(p,q) = 0
 	// rotation stored in R whose columns are eigenvectors of A
 	float d = (A[p][p] - A[q][q]) / (2.0f*A[p][q]);
@@ -703,7 +727,7 @@ __device__ void jacobiRotate(mat3 &A, mat3 &R, int p, int q){
 
 	//store rotation in R
 	for (k = 0; k < 3; k++){
-		float Rkp = c*R[k][p] + s*A[k][q];
+		float Rkp = c*R[k][p] + s*R[k][q];
 		float Rkq = -s*R[k][p] + c*R[k][q];
 
 		R[k][p] = Rkp;
@@ -711,7 +735,7 @@ __device__ void jacobiRotate(mat3 &A, mat3 &R, int p, int q){
 	}
 }
 
-__device__ void eigenDecompposition(mat3 &outA, mat3& outR){
+void eigenDecompposition(mat3 &outA, mat3& outR){
 	//only for symmetric matrices!
 	//A=RA'R^T, where A' is diagnoal and R orthonormal
 
@@ -719,11 +743,11 @@ __device__ void eigenDecompposition(mat3 &outA, mat3& outR){
 	mat3 A(outA);
 	mat3 R = mat3(0.0f);
 	R[0][0] = R[1][1] = R[2][2] = 1.0f;
-	mat3 view = A;
+	/*mat3 view = A;
 	printf("view[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
 		view[0][0], view[0][1], view[0][2],
 		view[1][0], view[1][1], view[1][2],
-		view[2][0], view[2][1], view[2][2]);
+		view[2][0], view[2][1], view[2][2]);*/
 	int iter = 0;
 	while (iter < JACOBI_ITERATIONS){
 		int p, q;
@@ -741,21 +765,32 @@ __device__ void eigenDecompposition(mat3 &outA, mat3& outR){
 		}
 
 		//all small enough->done
-		if (maxval < 0.0f) break;
+		if (maxval < 0.0001f) break;
 		//rotate matrix with respect to that element
 		jacobiRotate(A, R, p, q);
+		/*printf("---------------------------------------------\n");
+		view = A;
+		printf("A[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+			view[0][0], view[0][1], view[0][2],
+			view[1][0], view[1][1], view[1][2],
+			view[2][0], view[2][1], view[2][2]);
 
+		view = R;
+		printf("R[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+			view[0][0], view[0][1], view[0][2],
+			view[1][0], view[1][1], view[1][2],
+			view[2][0], view[2][1], view[2][2]);*/
 		iter++;
 	}
 	outA = A;
 	outR = R;
 }
 
-__global__ void polarDecomposition(/*mat3 &A, mat3 &R, mat3 &S*/){
+void polarDecomposition(mat3 A, mat3 &R, mat3 &S){
 	//A=RS, where S is symmetric and R is orthonormal
 	//-> S=(A^T A)^(1/2)
-	mat3 A, R, S;
-	A = mat3(vec3(1.0f,-.3333f,.959f),vec3(.495f,1.0f,0.0f),vec3(.5f,-.247f,1.5f));
+	//mat3 A, R, S;
+	//A = mat3(vec3(1.0f,-.3333f,.959f),vec3(.495f,1.0f,0.0f),vec3(.5f,-.247f,1.5f));
 
 
 	//identity;
@@ -763,11 +798,16 @@ __global__ void polarDecomposition(/*mat3 &A, mat3 &R, mat3 &S*/){
 	R[0][0] = R[1][1] = R[2][2] = 1.0f;
 
 	mat3 ATA(0.0f);
-	ATA = transpose(A)*A;
-	
+	ATA = glm::transpose(A)*A;
+	mat3 view = transpose(A);
+	printf("AT[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+		view[0][0], view[0][1], view[0][2],
+		view[1][0], view[1][1], view[1][2],
+		view[2][0], view[2][1], view[2][2]);
+
 	mat3 U;
 	eigenDecompposition(ATA, U);
-	mat3 view = U;
+	view = U;
 	printf("QT[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
 		view[0][0], view[0][1], view[0][2],
 		view[1][0], view[1][1], view[1][2],
@@ -813,10 +853,26 @@ __global__ void polarDecomposition(/*mat3 &A, mat3 &R, mat3 &S*/){
 	S = transpose(R)*A;
 }
 
-__global__ void SetGoalPosition(particle* particles, int N, mat3 R, vec3 MassCenter0, vec3 MassCenter1){
+__global__ void SetGoalPosition(particle* particles, int N, mat3 R, vec4 MassCenter0, vec4 MassCenter1){
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (index < N){
-		particles[index].position=vec4(R*(vec3(particles[index].pred_position) - MassCenter0) + MassCenter1,1.0f);
+	if (ParticleConditions(index,N,particles,0,RIGID_BODY)){
+		particles[index].pred_position=vec4(R*(vec3(particles[index].position - MassCenter0) + vec3(MassCenter1)),1.0f);
+	}
+}
+
+__global__ void MassCenterPredictedPosition(vec4* rigPredictedPos, particle* particles, int N, int startID){
+	int index = threadIdx.x + (blockIdx.x * blockDim.x);
+	if (ParticleConditions(index, N, particles, 0, RIGID_BODY)){
+		rigPredictedPos[particles[index].ID - startID] = particles[index].pred_position;
+	}
+}
+
+__global__ void MassCenterPredictedMatrix(mat3* rigPredictedRot, particle* particles, int N, int startID, vec4 oldMC, vec4 newMC){
+	int index = threadIdx.x + (blockIdx.x * blockDim.x);
+	if (ParticleConditions(index, N, particles, 0, RIGID_BODY)){
+		vec3 p = vec3(particles[index].position - oldMC);
+		vec3 q = vec3(particles[index].pred_position - newMC);
+		rigPredictedRot[particles[index].ID - startID] = mat3(q.x*p, q.y*p, q.z*p);
 	}
 }
 /*************************************
@@ -831,24 +887,48 @@ void initCuda(int N)
 	numGenerated = 0;
     dim3 fullBlocksPerGrid((int)ceil(float(N)/float(blockSize)));
 	//mat3 A, R, S;
-	polarDecomposition << <1, 1 >> >();
+	//polarDecomposition << <1, 1 >> >();
+	LockNum = 0;
     cudaMalloc((void**)&particles, N * sizeof(particle));
 	SmallObjMesh som(MeshFileName);
-	LockNum=som.position.size();
+	LockNum+=som.position.size();
+	
 	printf("%d Vertices\n",LockNum);
-	particle* par=new particle[som.position.size()];
-	for(int i=0;i<LockNum;i++){
+	SmallObjMesh rigidtest("D:\\workspace\\PhysiAnim\\FinalProj\\Position_Based_Fluids\\PBF_Stage2\\Ref\\Models\\cont.obj");
+	rigtest.start = LockNum;
+	rigtest.size = rigidtest.position.size();
+	LockNum += rigidtest.position.size();
+	printf("%d Vertices\n", LockNum);
+	particle* par=new particle[LockNum/*som.position.size()*/];
+	for (int i = 0; i<som.position.size(); i++){
 		par[i].position=vec4(som.position[i]+vec3(0.0,0.0,10.0),1.0);
 		par[i].pred_position = par[i].position;
+		par[i].LayerMask = CONTAINER;
+	}
+
+	if (rigidtest.position.size() > 0){
+		rigtest.ID = 0;
+		rigtest.size = rigidtest.position.size();
+		rigtest.newMassCenter = rigtest.oldMassCenter = vec4(0.0);
+	}
+	vec4 testrig(0.0);
+	for (int i = som.position.size(); i < som.position.size() + rigidtest.position.size(); i++){
+		par[i].position = vec4(rigidtest.position[i - som.position.size()]+vec3(0,0,70.0f), 1.0f);
+		par[i].pred_position = par[i].position;
+		testrig += par[i].position;
+		par[i].LayerMask = RIGID_BODY;
+	}
+	
+	
+	if (LockNum > N){
+		printf("The mesh file need %d particles but the total particle number is set to %d!\n", LockNum, N);
+		printf("Program down!\n");
+		exit(-1);
 	}
 	if(LockNum>0){
 		cudaMemcpy(particles,par,LockNum*sizeof(particle),cudaMemcpyHostToDevice);
 	}
-	if (LockNum > N){
-		printf("The mesh file need %d particles but the total particle number is set to %d!\n",LockNum,N);
-		printf("Program down!\n");
-		exit(-1);
-	}
+	
 	//delete [] par;
 	checkCUDAErrorWithLine("particles cudamalloc failed");
 
@@ -863,9 +943,19 @@ void initCuda(int N)
 	cudaMalloc((void**)&grid_lock, grid_width*grid_depth*grid_height*sizeof(int));
 	cudaMemset(grid_lock, 0, grid_width*grid_depth*grid_height*sizeof(int));
 	checkCUDAErrorWithLine("grid_elements cudamalloc failed!");
-
+	cudaMalloc((void**)&rigPredictedPos, rigidtest.position.size()*sizeof(vec4));
+	cudaMalloc((void**)&rigPredictedRot, rigidtest.position.size()*sizeof(mat3));
 	initializeParticles<<<fullBlocksPerGrid, blockSize>>>(N, particles,LockNum);
 
+	MassCenterPredictedPosition << <fullBlocksPerGrid, blockSize >> >(rigPredictedPos,particles, N, som.position.size());
+	thrust::device_ptr<vec4> begin(rigPredictedPos);
+	//begin+=som.position.size();
+	thrust::device_ptr<vec4> end = begin + rigtest.size;
+	//end += rigidtest.position.size();
+	rigtest.oldMassCenter = thrust::reduce(begin, end,vec4(0.0), thrust::plus<vec4>())/rigtest.size;
+	rigtest.oldMassCenter.w = 1.0f;
+	printf("zhehuo: [%f, %f, %f]\n", rigtest.oldMassCenter.x, rigtest.oldMassCenter.y, rigtest.oldMassCenter.z);
+	printf("tester: [%f, %f, %f]\n", testrig.x, testrig.y, testrig.z);
     checkCUDAErrorWithLine("Kernel failed!");
     cudaThreadSynchronize();
 }
@@ -884,13 +974,43 @@ void cudaPBFUpdateWrapper(float dt)
 		ExtForceSet = false;
 		setExternalForces << < fullBlocksPerGrid, blockSize >> >(numParticles, particles,innerLockNum,gravity);
 	}*/
-	//printf("Good\n");
+	printf("Good\n");
 	applyExternalForces << <fullBlocksPerGrid, blockSize >> >(numParticles, dt, particles, innerLockNum);
     checkCUDAErrorWithLine("applyExternalForces failed!");
 	//findNeighbors(particles, grid_idx, grid, neighbors, numParticles,innerLockNum);
 	findParticleNeighborsWrapper(particles, neighbors, num_neighbors, numParticles, innerLockNum);
     checkCUDAErrorWithLine("findNeighbors failed!");
 	boxCollisionResponse << <fullBlocksPerGrid, blockSize >> >(numParticles, particles, innerLockNum);
+	
+
+
+
+	MassCenterPredictedPosition << <fullBlocksPerGrid, blockSize >> >(rigPredictedPos, particles, numParticles, rigtest.start);
+	checkCUDAErrorWithLine("MassCenterPredictedPosition failed!");
+	thrust::device_ptr<vec4> begin(rigPredictedPos);
+	thrust::device_ptr<vec4> end = begin + rigtest.size;
+	rigtest.newMassCenter = thrust::reduce(begin, end, vec4(0.0), thrust::plus<vec4>())/rigtest.size;
+	rigtest.newMassCenter.w = 1.0f;
+	printf("mass center: [%f, %f, %f]\n", rigtest.newMassCenter.x, rigtest.newMassCenter.y, rigtest.newMassCenter.z);
+
+	MassCenterPredictedMatrix << <fullBlocksPerGrid, blockSize >> >(rigPredictedRot, particles, numParticles, rigtest.start, rigtest.oldMassCenter, rigtest.newMassCenter);
+	checkCUDAErrorWithLine("MassCenterPredictedMatrix failed!");
+	thrust::device_ptr<mat3> rotBegin(rigPredictedRot);
+	thrust::device_ptr<mat3> rotEnd = rotBegin + rigtest.size;
+	
+	rigRotMat = thrust::reduce(rotBegin, rotEnd, mat3(0.0), thrust::plus<mat3>());
+	mat3 rotationDecomposition;
+	mat3 scaleDecomposition;
+	mat3 view = rigRotMat;
+	printf("view[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+	view[0][0], view[0][1], view[0][2],
+	view[1][0], view[1][1], view[1][2],
+	view[2][0], view[2][1], view[2][2]);
+	polarDecomposition(rigRotMat, rotationDecomposition, scaleDecomposition);
+	checkCUDAErrorWithLine("polarDecomposition failed!");
+	SetGoalPosition << <fullBlocksPerGrid, blockSize >> >(particles, numParticles, rotationDecomposition, rigtest.oldMassCenter, rigtest.newMassCenter);
+	checkCUDAErrorWithLine("SetGoalPosition failed!");
+	rigtest.oldMassCenter = rigtest.newMassCenter;
 
 
 	for(int i = 0; i < SOLVER_ITERATIONS; i++){
