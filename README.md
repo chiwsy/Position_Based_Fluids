@@ -37,9 +37,16 @@ Introduction
 	
 	![GPU perf vs. BlockSize](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/Images/GPUperformance.png)
 	
-	* Floating objects
-	* Multi fluids
-	* Real-time surface reconstruction
+	* ~~Floating objects~~ Only rigidbody fluid coupling implemented:
+	
+	![rigidBody Fall view](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/Images/rigidBodyFall.gif)
+	![rigidBody Fall view2](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/Images/rigidBodyFall2.gif)
+	
+	![water tight cube](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/Images/WaterTightCube.gif)
+	
+	![dragon in water](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/Images/DragonInWater.gif)
+	
+	* ~~Real-time surface reconstruction~~
 
 =====================
 Acknowledgement
