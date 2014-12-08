@@ -567,7 +567,7 @@ __global__ void initializeParticles(int N, particle* particles,int LockNum=INT_M
 		p.LayerMask = FLUID;
 		p.position.x = (index%20)-9.5f;
 		p.position.y = ((index/20)%20)-9.5f;
-		p.position.z = (index/400)+70.0f+0.05f*rand.z;
+		p.position.z = (index/400)+10.0f+0.05f*rand.z;
 		p.position.w = 1.0f;
 		//p.position=glm::vec4(index%9-3.5f,(index/9)%20-9.5f,5.0f+index/180,1.0f);
 		p.pred_position = p.position;
@@ -1019,7 +1019,13 @@ void cudaPBFUpdateWrapper(float dt)
 	checkCUDAErrorWithLine("polarDecomposition failed!");
 	SetGoalPosition << <fullBlocksPerGrid, blockSize >> >(particles, numParticles, rotationDecomposition, rigtest.oldMassCenter, rigtest.newMassCenter);
 	checkCUDAErrorWithLine("SetGoalPosition failed!");
-	rigtest.oldMassCenter = rigtest.newMassCenter;
+
+	MassCenterPredictedPosition << <fullBlocksPerGrid, blockSize >> >(rigPredictedPos, particles, numParticles, rigtest.start);
+	checkCUDAErrorWithLine("MassCenterPredictedPosition failed!");
+	begin=thrust::device_ptr<vec4>(rigPredictedPos);
+	end = begin + rigtest.size;
+	rigtest.oldMassCenter = thrust::reduce(begin, end, vec4(0.0), thrust::plus<vec4>()) / rigtest.size;
+	rigtest.oldMassCenter.w = 1.0f;
 
 
 	for(int i = 0; i < SOLVER_ITERATIONS; i++){
