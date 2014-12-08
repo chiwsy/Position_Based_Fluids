@@ -95,7 +95,7 @@ __device__ bool Conditions(int index, int N, int LockNum){
 }
 
 __device__ bool ParticleConditions(int index, int N, particle* p, int LockNum, int LayerMask){
-	return index < N && (p[index].LayerMask&LayerMask);// &&!(p[index].LayerMask&FROZEN);
+	return index < N && (p[index].LayerMask&LayerMask)&&!(p[index].LayerMask&FROZEN);
 	//return index<N && (p[index].ID>LockNum);
 }
 
@@ -624,9 +624,9 @@ __global__ void updatePosition(int N, particle* particles,int LockNum=0)
 			particles[index].position = particles[index].pred_position;
 		
 	}
-	if (index < N){
+	/*if (index < N){
 		particles[index].LayerMask &= ~FROZEN;
-	}
+	}*/
 	//if(particles[index].ID<=LockNum){
 	//	particles[index].velocity=vec3(0.0f);
 	//	particles[index].curl=vec3(0.0f);
@@ -637,7 +637,7 @@ __global__ void updatePosition(int N, particle* particles,int LockNum=0)
 __global__ void updatePredictedPosition(int N, particle* particles,int LockNum=0)
 {
     int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (ParticleConditions(index, N, particles, LockNum,FLUID|RIGID_BODY)){
+	if (ParticleConditions(index, N, particles, LockNum,FLUID)){
 		particles[index].pred_position += glm::vec4(particles[index].delta_pos,0.0f);
 	}
 }
@@ -649,6 +649,8 @@ __global__ void updateVelocity(int N, particle* particles, float dt,int LockNum)
 		particles[index].velocity = glm::vec3((1.0f/dt)*(particles[index].pred_position - particles[index].position));
 		if (length(particles[index].velocity) > 20.0f)
 			particles[index].velocity = 20.0f*normalize(particles[index].velocity);
+		/*if (length(particles[index].velocity) < frozenDistance)
+			particles[index].LayerMask |= FROZEN;*/
 	}
 }
 
@@ -800,18 +802,18 @@ void polarDecomposition(mat3 A, mat3 &R, mat3 &S){
 	mat3 ATA(0.0f);
 	ATA = glm::transpose(A)*A;
 	mat3 view = transpose(A);
-	printf("AT[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+	/*printf("AT[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
 		view[0][0], view[0][1], view[0][2],
 		view[1][0], view[1][1], view[1][2],
-		view[2][0], view[2][1], view[2][2]);
+		view[2][0], view[2][1], view[2][2]);*/
 
 	mat3 U;
 	eigenDecompposition(ATA, U);
 	view = U;
-	printf("QT[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+	/*printf("QT[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
 		view[0][0], view[0][1], view[0][2],
 		view[1][0], view[1][1], view[1][2],
-		view[2][0], view[2][1], view[2][2]);
+		view[2][0], view[2][1], view[2][2]);*/
 	float l0 = ATA[0][0];
 	ATA[0][0] = l0 = l0 <= 0.0f ? 0.0f : sqrt(l0);
 
@@ -821,15 +823,15 @@ void polarDecomposition(mat3 A, mat3 &R, mat3 &S){
 	float l2 = ATA[2][2];
 	ATA[2][2]=l2 = l2 <= 0.0f ? 0.0f : sqrt(l2);
 	view = ATA;
-	printf("ATA[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+	/*printf("ATA[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
 		view[0][0], view[0][1], view[0][2],
 		view[1][0], view[1][1], view[1][2],
-		view[2][0], view[2][1], view[2][2]);
+		view[2][0], view[2][1], view[2][2]);*/
 	view = transpose(U)*ATA*U;
-	printf("U[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+	/*printf("U[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
 		view[0][0], view[0][1], view[0][2],
 		view[1][0], view[1][1], view[1][2],
-		view[2][0], view[2][1], view[2][2]);
+		view[2][0], view[2][1], view[2][2]);*/
 	mat3 S1=inverse(view);
 	/*S1[0][0] = l0*U[0][0] * U[0][0] + l1*U[0][1] * U[0][1] + l2*U[0][2] * U[0][2];
 	S1[0][1] = l0*U[0][0] * U[1][0] + l1*U[0][1] * U[1][1] + l2*U[0][2] * U[1][2];
@@ -845,11 +847,18 @@ void polarDecomposition(mat3 A, mat3 &R, mat3 &S){
 
 
 	R = A*S1;
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++)
+			if (abs(R[i][j] < 0.001f)) R[i][j] = 0.0f;
+	R[0] = normalize(R[0]);
+	R[1] = normalize(R[1]);
+	R[2] = normalize(R[2]);
+
 	view = R;
-	printf("view[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+	/*printf("view[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
 		view[0][0], view[0][1], view[0][2],
 		view[1][0], view[1][1], view[1][2],
-		view[2][0], view[2][1], view[2][2]);
+		view[2][0], view[2][1], view[2][2]);*/
 	S = transpose(R)*A;
 }
 
@@ -974,7 +983,7 @@ void cudaPBFUpdateWrapper(float dt)
 		ExtForceSet = false;
 		setExternalForces << < fullBlocksPerGrid, blockSize >> >(numParticles, particles,innerLockNum,gravity);
 	}*/
-	printf("Good\n");
+	//printf("Good\n");
 	applyExternalForces << <fullBlocksPerGrid, blockSize >> >(numParticles, dt, particles, innerLockNum);
     checkCUDAErrorWithLine("applyExternalForces failed!");
 	//findNeighbors(particles, grid_idx, grid, neighbors, numParticles,innerLockNum);
@@ -991,7 +1000,7 @@ void cudaPBFUpdateWrapper(float dt)
 	thrust::device_ptr<vec4> end = begin + rigtest.size;
 	rigtest.newMassCenter = thrust::reduce(begin, end, vec4(0.0), thrust::plus<vec4>())/rigtest.size;
 	rigtest.newMassCenter.w = 1.0f;
-	printf("mass center: [%f, %f, %f]\n", rigtest.newMassCenter.x, rigtest.newMassCenter.y, rigtest.newMassCenter.z);
+	//printf("mass center: [%f, %f, %f]\n", rigtest.newMassCenter.x, rigtest.newMassCenter.y, rigtest.newMassCenter.z);
 
 	MassCenterPredictedMatrix << <fullBlocksPerGrid, blockSize >> >(rigPredictedRot, particles, numParticles, rigtest.start, rigtest.oldMassCenter, rigtest.newMassCenter);
 	checkCUDAErrorWithLine("MassCenterPredictedMatrix failed!");
@@ -1001,11 +1010,11 @@ void cudaPBFUpdateWrapper(float dt)
 	rigRotMat = thrust::reduce(rotBegin, rotEnd, mat3(0.0), thrust::plus<mat3>());
 	mat3 rotationDecomposition;
 	mat3 scaleDecomposition;
-	mat3 view = rigRotMat;
-	printf("view[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
+	//mat3 view = rigRotMat;
+	/*printf("view[3][3]=\n[%f,%f,%f]\n[%f,%f,%f]\n[%f,%f,%f]\n",
 	view[0][0], view[0][1], view[0][2],
 	view[1][0], view[1][1], view[1][2],
-	view[2][0], view[2][1], view[2][2]);
+	view[2][0], view[2][1], view[2][2]);*/
 	polarDecomposition(rigRotMat, rotationDecomposition, scaleDecomposition);
 	checkCUDAErrorWithLine("polarDecomposition failed!");
 	SetGoalPosition << <fullBlocksPerGrid, blockSize >> >(particles, numParticles, rotationDecomposition, rigtest.oldMassCenter, rigtest.newMassCenter);
