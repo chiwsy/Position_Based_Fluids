@@ -46,6 +46,8 @@ Introduction
 	
 	![dragon in water](https://github.com/chiwsy/Position_Based_Fluids/blob/master/PBF_Stage2/Images/DragonInWater.gif)
 	
+	[![Demo on YouTube](http://img.youtube.com/vi/l9m0SKvFcCo/0.jpg)](http://www.youtube.com/watch?v=l9m0SKvFcCo)
+	
 	* ~~Real-time surface reconstruction~~
 
 =====================
