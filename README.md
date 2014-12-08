@@ -49,7 +49,7 @@ Introduction
 	[![Demo on YouTube](http://img.youtube.com/vi/l9m0SKvFcCo/0.jpg)](http://www.youtube.com/watch?v=l9m0SKvFcCo)
 	
 	* ~~Real-time surface reconstruction~~
-
+ 
 =====================
 Acknowledgement
 =====================
