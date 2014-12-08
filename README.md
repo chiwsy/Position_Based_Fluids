@@ -51,4 +51,4 @@ Introduction
 =====================
 Acknowledgement
 =====================
-This project is based on the paper [_Position_ _Based_ _Fluids_](http://mmacklin.com/pbf_sig_preprint.pdf) by Miles Macklin and Matthias Muller from NVidia. All the algorithms are designed by the authors if no specifications. 
+This project is based on the paper [_Position_ _Based_ _Fluids_](http://mmacklin.com/pbf_sig_preprint.pdf) by Miles Macklin and Matthias Muller from NVidia. All the algorithms are designed by the authors if no specifications. In order to implement the rigidbody physics, I referred to the [_Meshless Deformations Based on Shape Matching_](https://www.cs.drexel.edu/~david/Classes/Papers/MeshlessDeformations_SIG05.pdf). And the overall program framework is based on the paper [_Unified Particle Physics for Real-Time Applications_](http://mmacklin.com/uppfrta_preprint.pdf).
